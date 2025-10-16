@@ -1,5 +1,0 @@
-{
-  "name": "MedSight AI: DICOM Reporting Platform",
-  "description": "An advanced platform for viewing DICOM files, connecting with PACS, and generating AI-powered medical reports with MedGemma. It offers simulated cloud storage for easy access by providers and patients.",
-  "requestFramePermissions": []
-}
