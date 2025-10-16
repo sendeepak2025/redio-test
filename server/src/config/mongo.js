@@ -13,6 +13,9 @@ async function connectMongo(uri, retries = 3) {
   
   mongoose.set('strictQuery', true);
   
+  // Determine if we need TLS based on URI (Atlas uses mongodb+srv or explicit tls param)
+  const needsTLS = uri.includes('mongodb+srv://') || uri.includes('tls=true');
+  
   const options = {
     serverSelectionTimeoutMS: 10000, // 10 seconds
     socketTimeoutMS: 45000, // 45 seconds
@@ -20,11 +23,14 @@ async function connectMongo(uri, retries = 3) {
     minPoolSize: 2,
     retryWrites: true,
     retryReads: true,
-    // TLS/SSL options for MongoDB Atlas
-    tls: true,
-    tlsAllowInvalidCertificates: false,
-    tlsAllowInvalidHostnames: false,
   };
+  
+  // Only add TLS options for Atlas/remote connections
+  if (needsTLS) {
+    options.tls = true;
+    options.tlsAllowInvalidCertificates = false;
+    options.tlsAllowInvalidHostnames = false;
+  }
 
   let lastError;
   
