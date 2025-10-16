@@ -97,6 +97,7 @@ import {
   Assignment as ReportIcon,
   Description as DescriptionIcon,
   Download as DownloadIcon,
+  PhotoCamera as PhotoCameraIcon,
 } from '@mui/icons-material'
 import StructuredReporting from '../reporting/StructuredReporting'
 import SimpleReportExport from '../reporting/SimpleReportExport'
@@ -112,6 +113,7 @@ import ToolsHistory from './ToolsHistory'
 import ToastNotification from '../common/ToastNotification'
 import { useVolumeRenderer } from '../../hooks/useVolumeRenderer'
 import { TRANSFER_FUNCTIONS } from '../../utils/volumeRenderer'
+import { validateAnnotationColor, MEDICAL_ANNOTATION_COLORS } from '../../utils/colorUtils'
 
 // Types for medical imaging
 interface MedicalImageViewerProps {
@@ -618,8 +620,8 @@ export const MedicalImageViewer: React.FC<MedicalImageViewerProps> = ({
 
       // Apply window/level (simplified)
       ctx.globalAlpha = 1.0
-      ctx.imageSmoothingEnabled = true
-      ctx.imageSmoothingQuality = 'high'
+      // Disable image smoothing for crisp medical images
+      ctx.imageSmoothingEnabled = false
 
       // Draw image
       ctx.drawImage(img, offsetX, offsetY, drawWidth, drawHeight)
@@ -1385,7 +1387,7 @@ export const MedicalImageViewer: React.FC<MedicalImageViewerProps> = ({
     const canvas = canvasRef.current
     if (!canvas) return
 
-    const { points, color, strokeWidth, type, text, id, normalized = true } = annotation
+    const { points, style, type, text, id, normalized = true } = annotation
     const isSelected = selectedAnnotationId === id
     const isHovered = hoveredAnnotationId === id
     const isEditingText = editingAnnotationId === id
@@ -1395,9 +1397,13 @@ export const MedicalImageViewer: React.FC<MedicalImageViewerProps> = ({
       ? points.map(p => imageToCanvasCoords(p))
       : points
 
+    // Get color from style object and validate it (fix for black annotation issue)
+    const rawColor = style?.strokeColor || selectedColor || MEDICAL_ANNOTATION_COLORS.green
+    const annotationColor = validateAnnotationColor(rawColor)
+    
     // Use different colors for selected/hovered states
-    const drawColor = isSelected ? '#ffff00' : isHovered ? '#00ffff' : isActive ? '#ffff00' : color
-    const lineWidth = isSelected ? strokeWidth + 2 : isHovered ? strokeWidth + 1 : strokeWidth
+    const drawColor = isSelected ? '#ffff00' : isHovered ? '#00ffff' : isActive ? '#ffff00' : annotationColor
+    const lineWidth = isSelected ? (style?.strokeWidth || strokeWidth) + 2 : isHovered ? (style?.strokeWidth || strokeWidth) + 1 : (style?.strokeWidth || strokeWidth)
 
     ctx.save()
     ctx.strokeStyle = drawColor
@@ -3920,6 +3926,44 @@ export const MedicalImageViewer: React.FC<MedicalImageViewerProps> = ({
     }
   }, [measurements, annotations, currentStudyId, metadata, currentReportId, structuredReportingService])
 
+  // Capture snapshot of current frame with annotations
+  const handleCaptureSnapshot = useCallback(() => {
+    const canvas = canvasRef.current
+    if (!canvas) {
+      alert('⚠️ Canvas not available')
+      return
+    }
+
+    try {
+      // Convert canvas to blob
+      canvas.toBlob((blob) => {
+        if (!blob) {
+          alert('❌ Failed to capture snapshot')
+          return
+        }
+
+        // Create download link
+        const url = URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
+        const filename = `snapshot_${currentStudyId}_frame${currentFrameIndex + 1}_${timestamp}.png`
+        
+        link.href = url
+        link.download = filename
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        URL.revokeObjectURL(url)
+
+        alert(`✅ Snapshot saved: ${filename}`)
+        console.log('📸 Snapshot captured:', filename)
+      }, 'image/png', 1.0) // High quality PNG
+    } catch (error) {
+      console.error('Snapshot capture error:', error)
+      alert('❌ Failed to capture snapshot')
+    }
+  }, [currentStudyId, currentFrameIndex])
+
   // Finalize report (change status to final)
   const handleFinalizeReport = useCallback(async () => {
     if (!radiologistSignature.trim()) {
@@ -4409,7 +4453,7 @@ export const MedicalImageViewer: React.FC<MedicalImageViewerProps> = ({
 
   return (
     <Box sx={{
-      height: '100%',
+      height: '100vh',
       display: 'flex',
       flexDirection: 'column',
       bgcolor: '#000',
@@ -4489,6 +4533,16 @@ export const MedicalImageViewer: React.FC<MedicalImageViewerProps> = ({
               sx={{ fontWeight: 'bold' }}
             >
               💾 Save Report
+            </Button>
+            <Button
+              startIcon={<PhotoCameraIcon />}
+              onClick={handleCaptureSnapshot}
+              variant="outlined"
+              size="small"
+              color="secondary"
+              sx={{ fontWeight: 'bold' }}
+            >
+              📸 Snapshot
             </Button>
             {autoSaveStatus !== 'idle' && (
               <Chip
@@ -4864,12 +4918,12 @@ export const MedicalImageViewer: React.FC<MedicalImageViewerProps> = ({
       )}
 
       {/* Window/Level Presets Panel */}
-      <Paper sx={{ p: 2, mb: 2, bgcolor: 'background.paper' }}>
+      {/* <Paper sx={{ p: 2, mb: 2, bgcolor: 'background.paper' }}>
         <WindowLevelPresets
           onPresetSelect={handlePresetSelect}
           currentPreset={currentPreset}
         />
-      </Paper>
+      </Paper> */}
 
       {/* Enhanced Cine Controls */}
       {totalFrames > 1 && (
@@ -6286,7 +6340,7 @@ export const MedicalImageViewer: React.FC<MedicalImageViewerProps> = ({
                     sx={{
                       mb: 1,
                       bgcolor: annotation.type === 'clinical' ? 'error.light' : 'grey.100',
-                      borderLeft: `4px solid ${annotation.color}`
+                      borderLeft: `4px solid ${validateAnnotationColor(annotation.style?.strokeColor)}`
                     }}
                   >
                     <CardContent sx={{ py: 1 }}>

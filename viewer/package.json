@@ -30,6 +30,7 @@
     "@mui/x-date-pickers": "^6.10.2",
     "@reduxjs/toolkit": "^1.9.5",
     "axios": "^1.4.0",
+    "connect-history-api-fallback": "^2.0.0",
     "cornerstone-wado-image-loader": "^4.13.2",
     "date-fns": "^2.30.0",
     "dicom-parser": "^1.8.21",

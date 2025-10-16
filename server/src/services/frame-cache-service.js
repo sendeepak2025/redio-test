@@ -101,15 +101,20 @@ class FrameCacheService {
       throw new Error(`Could not map frame ${frameIndex} to Orthanc instance`);
     }
 
-    // Fetch frame from Orthanc
-    const orthancFrameUrl = `${this.orthancUrl}/instances/${targetInstance.orthancInstanceId}/frames/${localFrameIndex}/preview`;
+    // Fetch full-resolution frame from Orthanc with proper windowing
+    // The /rendered endpoint applies DICOM windowing and returns PNG at full resolution
+    const orthancFrameUrl = `${this.orthancUrl}/instances/${targetInstance.orthancInstanceId}/frames/${localFrameIndex}/rendered`;
     
-    console.log(`📥 Fetching from Orthanc: ${orthancFrameUrl}`);
+    console.log(`📥 Fetching full-resolution frame from Orthanc: ${orthancFrameUrl}`);
     
     const response = await axios.get(orthancFrameUrl, {
       auth: this.orthancAuth,
       responseType: 'arraybuffer',
-      timeout: 10000
+      timeout: 10000,
+      params: {
+        // Request full quality rendering
+        quality: 100
+      }
     });
 
     return Buffer.from(response.data);

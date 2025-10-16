@@ -21,6 +21,7 @@ const viewerSelectionRoutes = require('./viewer-selection');
 const structuredReportsRoutes = require('./structured-reports');
 const signatureRoutes = require('./signature');
 const medicalAIRoutes = require('./medical-ai');
+const systemMonitoringRoutes = require('./system-monitoring');
 
 const router = express.Router();
 
@@ -129,5 +130,8 @@ router.use('/api/signature', signatureRoutes);
 
 // Medical AI API - MedSigLIP and MedGemma integration
 router.use('/api/medical-ai', medicalAIRoutes);
+
+// System Monitoring API - Machine statistics and system health
+router.use('/api/monitoring', systemMonitoringRoutes);
 
 module.exports = router;

@@ -271,77 +271,14 @@ const PatientsPage: React.FC = () => {
         <title>Patients & Studies</title>
       </Helmet>
 
-      <Box sx={{ display: "flex", height: "100vh", bgcolor: "grey.50" }}>
-        {/* Sidebar */}
-        <Paper
-          elevation={0}
-          sx={{
-            width: 280,
-            borderRight: 1,
-            borderColor: "divider",
-            display: "flex",
-            flexDirection: "column",
-            bgcolor: "background.paper",
-          }}
-        >
-          <Box sx={{ p: 3, borderBottom: 1, borderColor: "divider" }}>
-            <Typography variant="h5" fontWeight="bold" color="primary.main">
-              Medical Portal
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-              Patient Management System
-            </Typography>
-          </Box>
-
-          <Box sx={{ flex: 1, p: 2 }}>
-            <Stack spacing={1}>
-              <Button
-                fullWidth
-                startIcon={<People />}
-                onClick={() => setTabIndex(0)}
-                variant={tabIndex === 0 ? "contained" : "text"}
-                sx={{
-                  justifyContent: "flex-start",
-                  py: 1.5,
-                  px: 2,
-                  textTransform: "none",
-                  fontWeight: tabIndex === 0 ? 600 : 400,
-                }}
-              >
-                Patients
-              </Button>
-              <Button
-                fullWidth
-                startIcon={<Science />}
-                onClick={() => setTabIndex(1)}
-                variant={tabIndex === 1 ? "contained" : "text"}
-                sx={{
-                  justifyContent: "flex-start",
-                  py: 1.5,
-                  px: 2,
-                  textTransform: "none",
-                  fontWeight: tabIndex === 1 ? 600 : 400,
-                }}
-              >
-                All Studies
-              </Button>
-            </Stack>
-          </Box>
-
-          <Box sx={{ p: 2, borderTop: 1, borderColor: "divider" }}>
-            <Typography variant="caption" color="text.secondary" sx={{ display: "block", lineHeight: 1.5 }}>
-              {tabIndex === 0
-                ? "Select a patient to view their studies and upload DICOM files."
-                : "Browse all available medical imaging studies."}
-            </Typography>
-          </Box>
-        </Paper>
+      <Box sx={{  height: "100vh", bgcolor: "grey.50" }}>
+     
 
         {/* Main Content */}
-        <Box sx={{ flex: 1, overflow: "auto" }}>
+        <Box >
           {tabIndex === 0 ? (
             <Box sx={{ p: 4 }}>
-              <Box sx={{ maxWidth: 1400, mx: "auto" }}>
+              <Box sx={{ maxWidth: "100%", mx: "auto" }}>
                 <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 4 }}>
                   <Box>
                     <Typography variant="h4" fontWeight="bold" gutterBottom>

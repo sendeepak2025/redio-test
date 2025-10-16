@@ -169,6 +169,16 @@ class MedicalAIService {
   async analyzeStudy(studyInstanceUID, imageBuffer, modality, patientContext = {}) {
     console.log(`🏥 Starting comprehensive AI analysis for study: ${studyInstanceUID}`);
     
+    // Check if AI services are available
+    const health = await this.healthCheck();
+    const aiServicesAvailable = health.medSigLIP.available || health.medGemma4B.available;
+    
+    // If no AI services available, return mock data for demo
+    if (!aiServicesAvailable) {
+      console.warn('⚠️ AI services not available - returning demo data');
+      return this.generateMockAnalysis(studyInstanceUID, modality, patientContext);
+    }
+    
     const results = {
       studyInstanceUID,
       modality,
@@ -214,6 +224,54 @@ class MedicalAIService {
 
     console.log(`✅ AI analysis complete for study: ${studyInstanceUID}`);
     return results;
+  }
+
+  /**
+   * Generate mock analysis data for demo/testing
+   * Used when AI services are not available
+   */
+  generateMockAnalysis(studyInstanceUID, modality, patientContext = {}) {
+    console.log('📋 Generating mock AI analysis (AI services not running)');
+    
+    return {
+      studyInstanceUID,
+      modality,
+      timestamp: new Date(),
+      analyses: {
+        classification: {
+          predictions: [
+            { label: `${modality} Study`, confidence: 0.95 },
+            { label: 'Normal Anatomy', confidence: 0.82 },
+            { label: 'No Acute Findings', confidence: 0.78 }
+          ],
+          topPrediction: { label: `${modality} Study`, confidence: 0.95 },
+          features: null,
+          processingTime: 150,
+          model: 'Demo Mode (MedSigLIP not running)'
+        },
+        report: {
+          findings: `TECHNIQUE:\n${modality} imaging was performed.\n\nFINDINGS:\nThis is a demonstration report generated because AI services are not currently running.\n\nTo enable real AI analysis:\n1. Start AI services: docker-compose -f docker-compose.ai-services.yml up -d\n2. Configure environment variables in server/.env\n3. Restart the backend server\n\nFor now, you can use this interface to test the UI and workflow.`,
+          impression: `DEMO MODE: AI services (MedSigLIP and MedGemma) are not currently running.\n\nThis is a placeholder report to demonstrate the AI analysis interface.\n\nTo activate real AI analysis, please follow the instructions in AI-ANALYSIS-STATUS-AND-ACTIVATION.md`,
+          recommendations: [
+            'Start AI services to enable real analysis',
+            'Configure environment variables',
+            'See AI-QUICK-REFERENCE.md for setup instructions'
+          ],
+          keyFindings: [
+            'AI services not running - demo mode active',
+            'UI and workflow are functional',
+            'Ready for real AI integration'
+          ],
+          criticalFindings: [],
+          confidence: 0.0,
+          requiresReview: true,
+          generatedAt: new Date(),
+          model: 'Demo Mode (MedGemma not running)'
+        }
+      },
+      demoMode: true,
+      message: 'AI services are not running. This is demonstration data. See AI-ANALYSIS-STATUS-AND-ACTIVATION.md to activate real AI analysis.'
+    };
   }
 
   /**

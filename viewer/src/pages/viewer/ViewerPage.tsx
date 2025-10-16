@@ -240,7 +240,7 @@ const ViewerPage: React.FC = () => {
         </Box>
 
         {/* Study Information */}
-        <Box sx={{ p: 2, bgcolor: 'grey.100' }}>
+      {false &&   <Box sx={{ p: 2, bgcolor: 'grey.100' }}>
           <Grid container spacing={2} alignItems="center">
             <Grid item xs={12} md={3}>
               <Typography variant="body2" color="text.secondary">Patient:</Typography>
@@ -276,7 +276,7 @@ const ViewerPage: React.FC = () => {
             </Grid>
           </Grid>
             <Box sx={{ width: 350, bgcolor: 'grey.50', borderRight: 1, borderColor: 'divider', display: 'flex', flexDirection: 'column' }}>
-            {/* Patient Context Panel */}
+            Patient Context Panel
             {patientContext && (
               <Box sx={{ maxHeight: '40%', overflow: 'auto' }}>
                 <PatientContextPanel 
@@ -311,7 +311,7 @@ const ViewerPage: React.FC = () => {
               ))}
             </Box>
           </Box>
-        </Box>
+        </Box>}
 
         <Box sx={{ display: 'flex', height: 'calc(100vh - 140px)' }}>
           {/* Left Panel - Patient Context & Series */}

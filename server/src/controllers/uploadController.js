@@ -112,30 +112,23 @@ async function handleUpload(req, res) {
 
     const buffer = req.file.buffer;
 
-    // Parse DICOM metadata from uploaded file
-    const meta = parseDicomMetadata(buffer);
-    const { studyInstanceUID, seriesInstanceUID, sopInstanceUID } = meta;
+    // Parse locally just as a fallback; final truth Orthanc se aayega
+    const localMeta = parseDicomMetadata(buffer);
 
-    // Allow overriding patient info from form-data fields
+    // Allow overriding patient info from form-data fields (will apply later)
     const overridePatientID = (req.body && req.body.patientID) ? String(req.body.patientID) : null;
     const overridePatientName = (req.body && req.body.patientName) ? String(req.body.patientName) : null;
-    if (overridePatientID) meta.patientID = overridePatientID;
-    if (overridePatientName) meta.patientName = overridePatientName;
 
-    console.log(`📤 Uploading DICOM to Orthanc: ${sopInstanceUID}`);
-
-    // Upload DICOM file directly to Orthanc PACS
+    console.log(`📤 Uploading DICOM to Orthanc...`);
     const orthancService = getUnifiedOrthancService();
-    let orthancUploadResult;
 
+    let orthancUploadResult;
     try {
       console.log(`   Buffer size: ${buffer.length} bytes`);
       orthancUploadResult = await orthancService.uploadDicomFile(buffer);
       console.log(`✅ Uploaded to Orthanc:`, orthancUploadResult);
     } catch (orthancError) {
       console.error('❌ Failed to upload to Orthanc:', orthancError.message);
-      console.error('   Error details:', orthancError);
-      console.error('   Stack:', orthancError.stack);
       return res.status(500).json({
         success: false,
         message: `Failed to upload to Orthanc PACS: ${orthancError.message}`,
@@ -144,137 +137,144 @@ async function handleUpload(req, res) {
       });
     }
 
-    // Extract Orthanc IDs from upload result
+    // Orthanc internal IDs (DON'T confuse with DICOM UIDs)
     const orthancInstanceId = orthancUploadResult.ID;
     const orthancStudyId = orthancUploadResult.ParentStudy;
     const orthancSeriesId = orthancUploadResult.ParentSeries;
     const orthancPatientId = orthancUploadResult.ParentPatient;
 
-    // Get frame count from Orthanc
-    let frameCount;
+    // ✅ Single source of truth for UIDs/tags: read back from Orthanc
+    let tags;
     try {
-      frameCount = await orthancService.getFrameCount(orthancInstanceId);
-      console.log(`📊 Study: ${studyInstanceUID}, Frames: ${frameCount}`);
-    } catch (frameError) {
-      console.error('❌ Failed to get frame count:', frameError.message);
-      // Try to delete the uploaded instance from Orthanc
-      try {
-        await orthancService.deleteInstance(orthancInstanceId);
-        console.log('   Cleaned up Orthanc instance');
-      } catch (cleanupError) {
-        console.warn('   Could not cleanup Orthanc instance:', cleanupError.message);
-      }
-      return res.status(500).json({
-        success: false,
-        message: `Failed to get frame count: ${frameError.message}`
-      });
+      tags = await orthancService.getInstanceMetadata(orthancInstanceId);
+    } catch (e) {
+      // cleanup if tags fetch fails
+      try { await orthancService.deleteInstance(orthancInstanceId); } catch { }
+      return res.status(500).json({ success: false, message: `Failed to read instance tags from Orthanc: ${e.message}` });
     }
 
-    // Save study metadata to MongoDB
+    // Use Orthanc tags first; fallback to local parse
+    const studyInstanceUID = tags.StudyInstanceUID || localMeta.studyInstanceUID;
+    const seriesInstanceUID = tags.SeriesInstanceUID || localMeta.seriesInstanceUID;
+    const sopInstanceUID = tags.SOPInstanceUID || localMeta.sopInstanceUID;
+
+    const patientID = (overridePatientID ?? tags.PatientID ?? localMeta.patientID) || 'Unknown';
+    const patientName = (overridePatientName ?? tags.PatientName ?? localMeta.patientName) || 'Unknown';
+
+    const studyDate = tags.StudyDate ?? localMeta.studyDate ?? '';
+    const studyTime = tags.StudyTime ?? localMeta.studyTime ?? '';
+    const studyDescription = tags.StudyDescription ?? localMeta.studyDescription ?? '';
+    const modality = tags.Modality ?? localMeta.modality ?? 'OT';
+    const rows = parseInt(tags.Rows ?? localMeta.rows ?? 0) || 0;
+    const cols = parseInt(tags.Columns ?? localMeta.cols ?? 0) || 0;
+
+    // Frames from Orthanc tags (fast) else helper
+    const frameCount = parseInt(tags.NumberOfFrames) || await orthancService.getFrameCount(orthancInstanceId) || 1;
+    console.log(`📊 StudyUID: ${studyInstanceUID}, Frames: ${frameCount}`);
+
+    // ---------------- MongoDB UPSERTS (consistent UIDs) ----------------
+
+    // Study
     await Study.updateOne(
       { studyInstanceUID },
       {
         $set: {
           studyInstanceUID,
-          patientName: meta.patientName || 'Unknown',
-          patientID: meta.patientID || 'Unknown',
-          patientBirthDate: meta.patientBirthDate || '',
-          patientSex: meta.patientSex || '',
-          studyDate: meta.studyDate || '',
-          studyTime: meta.studyTime || '',
-          modality: meta.modality || 'OT',
-          studyDescription: meta.studyDescription || '',
+          patientName,
+          patientID,
+          patientBirthDate: tags.PatientBirthDate ?? localMeta.patientBirthDate ?? '',
+          patientSex: tags.PatientSex ?? localMeta.patientSex ?? '',
+          studyDate,
+          studyTime,
+          modality,
+          studyDescription,
           numberOfSeries: 1,
           numberOfInstances: frameCount,
-          orthancStudyId: orthancStudyId
+          orthancStudyId
         }
       },
       { upsert: true }
     );
 
-    // Save series metadata to MongoDB
+    // Series
     await Series.updateOne(
       { studyInstanceUID, seriesInstanceUID },
       {
         $set: {
           studyInstanceUID,
           seriesInstanceUID,
-          modality: meta.modality || 'OT',
-          seriesNumber: 1,
-          description: meta.studyDescription || '',
-          orthancSeriesId: orthancSeriesId
+          modality,
+          seriesNumber: parseInt(tags.SeriesNumber) || 1,
+          description: tags.SeriesDescription ?? studyDescription ?? '',
+          orthancSeriesId
         }
       },
       { upsert: true }
     );
 
-    // Create instance records (one per frame for multi-frame DICOM)
-    const instanceRecords = [];
-    for (let frameIndex = 0; frameIndex < frameCount; frameIndex++) {
-      instanceRecords.push({
-        studyInstanceUID,
-        seriesInstanceUID,
-        sopInstanceUID: frameCount > 1 ? `${sopInstanceUID}.frame${frameIndex}` : sopInstanceUID,
-        instanceNumber: frameIndex + 1,
-        modality: meta.modality || 'OT',
-        rows: meta.rows,
-        columns: meta.cols,
-        numberOfFrames: frameCount,
-        // Orthanc storage (primary)
-        orthancInstanceId: orthancInstanceId,
-        orthancUrl: `${process.env.ORTHANC_URL || 'http://localhost:8042'}/instances/${orthancInstanceId}`,
-        orthancFrameIndex: frameIndex,
-        orthancStudyId: orthancStudyId,
-        orthancSeriesId: orthancSeriesId,
-        useOrthancPreview: true
+    // Instances (one per frame if multi-frame). Use bulkWrite+upsert to avoid duplicate key aborts.
+    const ops = [];
+    for (let i = 0; i < frameCount; i++) {
+      const instanceNumber = (frameCount > 1) ? i + 1 : (parseInt(tags.InstanceNumber) || 1);
+      const sopForFrame = (frameCount > 1) ? `${sopInstanceUID}.frame${i}` : sopInstanceUID;
+
+      ops.push({
+        updateOne: {
+          filter: { studyInstanceUID, seriesInstanceUID, sopInstanceUID: sopForFrame },
+          update: {
+            $set: {
+              studyInstanceUID,
+              seriesInstanceUID,
+              sopInstanceUID: sopForFrame,
+              instanceNumber,
+              modality,
+              rows,
+              columns: cols,
+              numberOfFrames: frameCount,
+              orthancInstanceId,
+              orthancUrl: `${process.env.ORTHANC_URL || 'http://localhost:8042'}/instances/${orthancInstanceId}`,
+              orthancFrameIndex: i,
+              orthancStudyId,
+              orthancSeriesId,
+              useOrthancPreview: true
+            }
+          },
+          upsert: true
+        }
       });
     }
 
-    // Bulk insert instances
-    console.log(`💾 Saving ${instanceRecords.length} instance records to MongoDB...`);
-    console.log(`   First instance: studyUID=${instanceRecords[0].studyInstanceUID}, orthancInstanceId=${instanceRecords[0].orthancInstanceId}`);
-
-    let insertedInstances;
+    console.log(`💾 Upserting ${ops.length} instance records to MongoDB...`);
     try {
-      insertedInstances = await Instance.insertMany(instanceRecords, { ordered: false });
-      console.log(`✅ Successfully inserted ${insertedInstances.length} instance records in MongoDB`);
-    } catch (error) {
-      // Ignore duplicate key errors
-      if (error.code === 11000) {
-        console.warn(`⚠️  Some instances already exist (duplicate key), continuing...`);
-        insertedInstances = instanceRecords;
-      } else {
-        console.error(`❌ Failed to insert instances:`, error);
-        throw error;
-      }
+      await Instance.bulkWrite(ops, { ordered: false });
+      console.log(`✅ Instances upserted`);
+    } catch (err) {
+      console.error('❌ bulkWrite failed:', err);
+      // No cleanup of Orthanc data to avoid data loss; surface error
+      return res.status(500).json({ success: false, message: `Failed to save instances: ${err.message}` });
     }
 
-    // Verify instances were saved
     const savedCount = await Instance.countDocuments({ studyInstanceUID });
     console.log(`✅ Verified: ${savedCount} instances in MongoDB for study ${studyInstanceUID}`);
 
-    // Link study to patient
+    // Link Patient
     try {
       const Patient = require('../models/Patient');
-      const pid = meta.patientID || 'Unknown';
-      const pnameOverride = (req.body && req.body.patientName) ? String(req.body.patientName) : null;
-      const pnameFromDicom = meta.patientName || 'Unknown';
-
-      const existing = await Patient.findOne({ patientID: pid }).lean();
+      const existing = await Patient.findOne({ patientID }).lean();
       if (existing) {
         const update = { $addToSet: { studyIds: studyInstanceUID } };
-        if (pnameOverride && pnameOverride.trim()) {
-          update.$set = { patientName: pnameOverride.trim() };
+        if (overridePatientName && overridePatientName.trim()) {
+          update.$set = { patientName: overridePatientName.trim() };
         }
-        await Patient.updateOne({ patientID: pid }, update, { upsert: true });
+        await Patient.updateOne({ patientID }, update, { upsert: true });
       } else {
         await Patient.updateOne(
-          { patientID: pid },
+          { patientID },
           {
             $set: {
-              patientID: pid,
-              patientName: (pnameOverride && pnameOverride.trim()) ? pnameOverride.trim() : pnameFromDicom,
-              orthancPatientId: orthancPatientId
+              patientID,
+              patientName,
+              orthancPatientId
             },
             $addToSet: { studyIds: studyInstanceUID }
           },
@@ -285,27 +285,29 @@ async function handleUpload(req, res) {
       console.warn('Patient linking skipped or failed:', patientErr?.message || patientErr);
     }
 
-    res.json({
+    return res.json({
       success: true,
-      message: `Successfully uploaded DICOM file with ${frameCount} frame(s) to Orthanc PACS`,
+      message: `Successfully uploaded DICOM with ${frameCount} frame(s)`,
       data: {
-        studyInstanceUID,
+        studyInstanceUID,              // DICOM UID (use this for matching)
         seriesInstanceUID,
         sopInstanceUID,
-        frameCount,
-        orthancInstanceId,
+        orthancInstanceId,             // Orthanc internal IDs (for API calls)
         orthancStudyId,
         orthancSeriesId,
-        instances: insertedInstances.length || instanceRecords.length,
-        patientID: meta.patientID || 'Unknown',
-        patientName: meta.patientName || 'Unknown',
+        orthancPatientId,
+        patientID,
+        patientName,
+        frameCount,
+        instancesSaved: savedCount,
         storage: 'orthanc-pacs'
       }
     });
   } catch (e) {
     console.error('Upload failed:', e);
-    res.status(500).json({ success: false, message: e.message });
+    return res.status(500).json({ success: false, message: e.message });
   }
 }
+
 
 module.exports = { uploadMiddleware, handleUpload };
