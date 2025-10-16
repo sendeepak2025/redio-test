@@ -43,10 +43,7 @@ vault kv put dicom-bridge/$ENVIRONMENT/webhook \
 vault kv put dicom-bridge/$ENVIRONMENT/database \
   mongodb_uri="mongodb://127.0.0.1:27017/dicomdb"
 
-# Cloudinary secrets (empty for development)
-vault kv put dicom-bridge/$ENVIRONMENT/cloudinary \
-  cloud_name="" \
-  api_key="" \
+# Cloudinary removed - no longer needed
   api_secret=""
 
 # Create a policy for the dicom-bridge role

@@ -158,12 +158,8 @@ class OrthancPreviewClient {
    * @private
    */
   buildPreviewUrl(instanceId, frameIndex, options) {
-    let url = `/instances/${instanceId}/preview`;
-
-    // Add frame index if not the first frame
-    if (frameIndex > 0) {
-      url = `/instances/${instanceId}/frames/${frameIndex}/preview`;
-    }
+    // Always use frames endpoint for consistency (works for both single and multi-frame)
+    let url = `/instances/${instanceId}/frames/${frameIndex}/preview`;
 
     // Add query parameters for preview options
     const params = new URLSearchParams();

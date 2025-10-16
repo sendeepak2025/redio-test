@@ -38,59 +38,19 @@ router.post('/orthanc/new-instance', async (req, res) => {
 
 /**
  * Background processing of new instance
- * यह function background में चलेगा
- * Handles both Orthanc (new) and Cloudinary (legacy) storage
+ * Handles Orthanc storage only (Cloudinary removed)
  */
 async function processNewInstance(orthancInstanceId, studyInstanceUID, seriesInstanceUID, sopInstanceUID) {
   try {
     console.log(`Processing instance: ${orthancInstanceId}`);
     
     const orthanc = getUnifiedOrthancService();
-    const cloudinary = require('cloudinary').v2;
     
     // Get instance metadata from Orthanc
     const metadata = await orthanc.getInstanceMetadata(orthancInstanceId);
     const frameCount = parseInt(metadata.NumberOfFrames) || 1;
     
     console.log(`Instance has ${frameCount} frames`);
-    
-    // Get DICOM file from Orthanc for Cloudinary upload
-    let cloudinaryUrl = null;
-    let cloudinaryPublicId = null;
-    
-    try {
-      console.log('Uploading to Cloudinary for legacy support...');
-      
-      // Get raw DICOM file
-      const dicomBuffer = await orthanc.getInstanceFile(orthancInstanceId);
-      
-      // Upload to Cloudinary
-      const uploadResult = await new Promise((resolve, reject) => {
-        const uploadStream = cloudinary.uploader.upload_stream(
-          {
-            resource_type: 'raw',
-            folder: 'dicom_files',
-            public_id: `${studyInstanceUID}_${orthancInstanceId}`,
-            format: 'dcm'
-          },
-          (error, result) => {
-            if (error) reject(error);
-            else resolve(result);
-          }
-        );
-        
-        uploadStream.end(dicomBuffer);
-      });
-      
-      cloudinaryUrl = uploadResult.secure_url;
-      cloudinaryPublicId = uploadResult.public_id;
-      
-      console.log(`✅ Uploaded to Cloudinary: ${cloudinaryPublicId}`);
-      
-    } catch (cloudinaryError) {
-      console.warn('Cloudinary upload failed (non-critical):', cloudinaryError.message);
-      // Continue processing even if Cloudinary fails
-    }
     
     // Check if study exists in database
     let study = await Study.findOne({ studyInstanceUID });
@@ -148,10 +108,7 @@ async function processNewInstance(orthancInstanceId, studyInstanceUID, seriesIns
         orthancInstanceId: orthancInstanceId,
         orthancUrl: `${process.env.ORTHANC_URL}/instances/${orthancInstanceId}`,
         orthancFrameIndex: frameIndex,
-        useOrthancPreview: true,
-        // Cloudinary storage (legacy - backup)
-        cloudinaryUrl: cloudinaryUrl,
-        cloudinaryPublicId: cloudinaryPublicId
+        useOrthancPreview: true
       });
     }
     
@@ -167,7 +124,6 @@ async function processNewInstance(orthancInstanceId, studyInstanceUID, seriesIns
     console.log(`✅ Created ${frameCount} instance records`);
     console.log(`✅ Processing complete for ${orthancInstanceId}`);
     console.log(`   - Orthanc: ${frameCount} frames`);
-    console.log(`   - Cloudinary: ${cloudinaryUrl ? 'uploaded' : 'skipped'}`);
     
     // Emit event for real-time updates (if you have WebSocket)
     if (global.io) {
@@ -176,7 +132,7 @@ async function processNewInstance(orthancInstanceId, studyInstanceUID, seriesIns
         patientName: metadata.PatientName,
         modality: metadata.Modality,
         frameCount: frameCount,
-        hasCloudinaryBackup: !!cloudinaryUrl
+        hasOrthancStorage: true
       });
     }
     

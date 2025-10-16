@@ -107,7 +107,6 @@ class UnifiedViewerService {
                         studyInstanceUID: study.studyInstanceUID,
                         instancesCount: instanceCount,
                         seriesCount: 1, // Approximate
-                        cloudinaryUrl: study.cloudinaryUrl,
                         _id: study._id
                     };
                 })
@@ -179,7 +178,6 @@ class UnifiedViewerService {
                         studyInstanceUID: dbStudy.studyInstanceUID,
                         instancesCount: instances.length,
                         instances: instances,
-                        cloudinaryUrl: dbStudy.cloudinaryUrl,
                         source: 'database'
                     };
                 }
@@ -246,8 +244,6 @@ class UnifiedViewerService {
     getImageUrl(study, instanceId) {
         if (study.source === 'orthanc' || study.hasOrthancData) {
             return orthancViewerService.getInstancePreviewUrl(instanceId);
-        } else if (study.cloudinaryUrl) {
-            return study.cloudinaryUrl;
         }
         return null;
     }

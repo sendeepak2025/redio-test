@@ -34,25 +34,21 @@ function listUploadedStudies() {
   }
 }
 
-function countFramesFromCloudinary(inst) {
+async function countFramesFromOrthanc(inst) {
   try {
-    const dicomParser = require('dicom-parser');
-    const axios = require('axios');
-    const { v2: cloudinary } = require('cloudinary');
-    let dicomUrl = inst.cloudinaryUrl;
-    if (!dicomUrl && inst.cloudinaryPublicId) {
-      dicomUrl = cloudinary.url(inst.cloudinaryPublicId, { resource_type: 'raw', secure: true });
+    // If instance has Orthanc ID, get frame count from Orthanc
+    if (inst.orthancInstanceId) {
+      const { getUnifiedOrthancService } = require('../services/unified-orthanc-service');
+      const orthancService = getUnifiedOrthancService();
+      const frameCount = await orthancService.getFrameCount(inst.orthancInstanceId);
+      return frameCount;
     }
-    if (!dicomUrl) return 1;
-    return axios.get(dicomUrl, { responseType: 'arraybuffer' }).then(resp => {
-      const buffer = Buffer.from(resp.data);
-      const ds = dicomParser.parseDicom(buffer);
-      const readInt = (tag, defVal = 1) => { try { return ds.intString(tag) ?? defVal; } catch { return defVal; } };
-      const frames = readInt('x00280008', 1) || 1;
-      return frames;
-    }).catch(() => 1);
+    
+    // Fallback to stored numberOfFrames
+    return inst.numberOfFrames || 1;
   } catch (e) {
-    return 1;
+    console.warn('Failed to count frames from Orthanc:', e.message);
+    return inst.numberOfFrames || 1;
   }
 }
 
@@ -103,16 +99,16 @@ async function getStudies(req, res) {
         dbStudies.map(async (study) => {
           let numberOfInstances = study.numberOfInstances || 1;
           
-          // Try to get accurate frame count from Cloudinary instance
+          // Try to get accurate frame count from Orthanc
           try {
             const inst = await Instance.findOne({ studyInstanceUID: study.studyInstanceUID }).lean();
             if (inst) {
-              numberOfInstances = await countFramesFromCloudinary(inst);
+              numberOfInstances = await countFramesFromOrthanc(inst);
             }
           } catch (error) {
             console.warn(`Failed to get frame count for study ${study.studyInstanceUID}:`, error.message);
-            // Fall back to stored value or local frame count
-            numberOfInstances = study.numberOfInstances || countFrames(study.studyInstanceUID) || 1;
+            // Fall back to stored value
+            numberOfInstances = study.numberOfInstances || 1;
           }
 
           return {
@@ -179,7 +175,7 @@ async function getStudy(req, res) {
     // Try to get frame count from instance data
     const inst = await Instance.findOne({ studyInstanceUID: studyUid }).lean();
     if (inst) {
-      numberOfInstances = await countFramesFromCloudinary(inst);
+      numberOfInstances = await countFramesFromOrthanc(inst);
     }
 
     res.json({ success: true, data: { ...study, numberOfInstances } });
@@ -197,7 +193,7 @@ async function getStudyMetadata(req, res) {
 
     const inst = await Instance.findOne({ studyInstanceUID: studyUid }).lean();
     let totalFrames = study.numberOfInstances || 1;
-    if (inst) totalFrames = await countFramesFromCloudinary(inst);
+    if (inst) totalFrames = await countFramesFromOrthanc(inst);
 
     const metadata = {
       studyInstanceUID: studyUid,
@@ -224,4 +220,4 @@ async function getStudyMetadata(req, res) {
   }
 }
 
-module.exports = { getStudies, getStudy, getStudyMetadata, countFramesFromCloudinary };
+module.exports = { getStudies, getStudy, getStudyMetadata, countFramesFromOrthanc };

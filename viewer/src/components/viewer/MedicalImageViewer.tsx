@@ -6445,7 +6445,7 @@ export const MedicalImageViewer: React.FC<MedicalImageViewerProps> = ({
             onExportReport={handleExportReport}
             onSignatureSave={async (signatureDataUrl) => {
               try {
-                console.log('📤 Uploading signature to Cloudinary...')
+                console.log('📤 Uploading signature to filesystem...')
                 const response = await fetch('/api/signature/upload', {
                   method: 'POST',
                   headers: {

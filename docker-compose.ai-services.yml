@@ -1,0 +1,113 @@
+version: '3.8'
+
+services:
+  # MedSigLIP - Image Classification Service (0.4B params)
+  medsigclip:
+    image: google/medsigclip:latest
+    container_name: medsigclip-service
+    ports:
+      - "5001:5000"
+    environment:
+      - MODEL_NAME=MedSigLIP-0.4B
+      - DEVICE=cuda  # Use 'cpu' if no GPU available
+      - BATCH_SIZE=8
+      - MAX_WORKERS=4
+    volumes:
+      - ./ai-models/medsigclip:/models
+      - ./ai-cache:/cache
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+        limits:
+          memory: 4G
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # MedGemma-4B - Radiology Report Generation (efficient)
+  medgemma-4b:
+    image: google/medgemma:4b-latest
+    container_name: medgemma-4b-service
+    ports:
+      - "5002:5000"
+    environment:
+      - MODEL_NAME=MedGemma-4B
+      - DEVICE=cuda  # Use 'cpu' if no GPU available
+      - BATCH_SIZE=4
+      - MAX_WORKERS=2
+      - ENABLE_REPORT_GENERATION=true
+      - ENABLE_MULTIMODAL=true
+    volumes:
+      - ./ai-models/medgemma-4b:/models
+      - ./ai-cache:/cache
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+        limits:
+          memory: 16G
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+
+  # MedGemma-27B - Advanced Clinical Reasoning (optional, high-resource)
+  medgemma-27b:
+    image: google/medgemma:27b-latest
+    container_name: medgemma-27b-service
+    ports:
+      - "5003:5000"
+    environment:
+      - MODEL_NAME=MedGemma-27B
+      - DEVICE=cuda  # Requires GPU
+      - BATCH_SIZE=1
+      - MAX_WORKERS=1
+      - ENABLE_CLINICAL_REASONING=true
+      - ENABLE_EHR_SUMMARIZATION=true
+      - ENABLE_MULTIMODAL=true
+    volumes:
+      - ./ai-models/medgemma-27b:/models
+      - ./ai-cache:/cache
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 2  # Requires 2 GPUs or 1 high-memory GPU
+              capabilities: [gpu]
+        limits:
+          memory: 64G
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 300s
+    profiles:
+      - advanced  # Only start with --profile advanced
+
+volumes:
+  ai-models:
+    driver: local
+  ai-cache:
+    driver: local
+
+networks:
+  default:
+    name: medical-ai-network
+    driver: bridge

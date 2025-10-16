@@ -3,7 +3,6 @@ const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
 const { connectMongo } = require('./config/mongo');
-const { configureCloudinary } = require('./config/cloudinary');
 const routes = require('./routes');
 const cookieParser = require('cookie-parser');
 const { getSecretManager, getApplicationSecrets } = require('./services/secret-manager');
@@ -94,9 +93,6 @@ async function startServer() {
 
           // Update environment variables with secrets (use fallback values if secrets not available)
           process.env.MONGODB_URI = secrets.database.uri || process.env.MONGODB_URI;
-          process.env.CLOUDINARY_CLOUD_NAME = secrets.cloudinary.cloudName || process.env.CLOUDINARY_CLOUD_NAME;
-          process.env.CLOUDINARY_API_KEY = secrets.cloudinary.apiKey || process.env.CLOUDINARY_API_KEY;
-          process.env.CLOUDINARY_API_SECRET = secrets.cloudinary.apiSecret || process.env.CLOUDINARY_API_SECRET;
 
           console.log('Application secrets loaded successfully');
         } catch (secretError) {
@@ -123,13 +119,8 @@ async function startServer() {
       console.warn('   Some features may not work properly');
     }
 
-    configureCloudinary({
-      cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-      api_key: process.env.CLOUDINARY_API_KEY,
-      api_secret: process.env.CLOUDINARY_API_SECRET
-    });
-
-    console.log('Database and Cloudinary configured');
+    // Cloudinary removed - using filesystem + Orthanc storage
+    console.log('Database configured');
 
     // TODO: Enable for production - Create default admin user
     // const { seedAdmin } = require('./seed/seedAdmin');

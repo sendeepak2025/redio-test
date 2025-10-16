@@ -20,6 +20,7 @@ const pacsRoutes = require('./pacs');
 const viewerSelectionRoutes = require('./viewer-selection');
 const structuredReportsRoutes = require('./structured-reports');
 const signatureRoutes = require('./signature');
+const medicalAIRoutes = require('./medical-ai');
 
 const router = express.Router();
 
@@ -123,7 +124,10 @@ router.use('/api/viewer', viewerSelectionRoutes);
 // Structured Reporting API - Medical findings, measurements, and reports
 router.use('/api/reports', structuredReportsRoutes);
 
-// Signature Upload API - Upload signatures to Cloudinary
+// Signature Upload API - Upload signatures to filesystem
 router.use('/api/signature', signatureRoutes);
+
+// Medical AI API - MedSigLIP and MedGemma integration
+router.use('/api/medical-ai', medicalAIRoutes);
 
 module.exports = router;

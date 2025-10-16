@@ -8,10 +8,15 @@ const Patient = require('../models/Patient');
 const fs = require('fs');
 const path = require('path');
 const { PNG } = require('pngjs');
-const { v2: cloudinary } = require('cloudinary');
 
 /**
- * ZIP DICOM Service - Handles ZIP files containing DICOM studies
+ * ⚠️ DEPRECATED: This service uses Cloudinary which has been removed.
+ * Use PACS upload service instead: server/src/services/pacs-upload-service.js
+ * This file is kept for reference only and should not be used in production.
+ */
+
+/**
+ * ZIP DICOM Service (DEPRECATED - DO NOT USE) - Handles ZIP files containing DICOM studies
  * Groups all DICOM files in ZIP under a single StudyInstanceUID for proper 3D reconstruction
  */
 class ZipDicomService {

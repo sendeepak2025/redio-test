@@ -20,20 +20,19 @@ const dummyAuthMiddleware = (req, res, next) => {
   next();
 };
 
-// Upload signature to Cloudinary
+// Upload signature to filesystem
 router.post('/upload', 
   dummyAuthMiddleware,
   signatureController.uploadSignature
 );
 
-// Get signature by report ID
-router.get('/report/:reportId', 
-  dummyAuthMiddleware,
+// Get signature file
+router.get('/file/:filename', 
   signatureController.getSignature
 );
 
 // Delete signature
-router.delete('/:publicId', 
+router.delete('/:filename', 
   dummyAuthMiddleware,
   signatureController.deleteSignature
 );

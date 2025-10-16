@@ -1,6 +1,5 @@
 const express = require('express');
 const { getSecretManager, getApplicationSecrets } = require('../services/secret-manager');
-const { configureCloudinary } = require('../config/cloudinary');
 
 const router = express.Router();
 
@@ -23,16 +22,8 @@ router.post('/refresh', async (req, res) => {
     
     // Update environment variables
     process.env.MONGODB_URI = secrets.database.uri || process.env.MONGODB_URI;
-    process.env.CLOUDINARY_CLOUD_NAME = secrets.cloudinary.cloudName || process.env.CLOUDINARY_CLOUD_NAME;
-    process.env.CLOUDINARY_API_KEY = secrets.cloudinary.apiKey || process.env.CLOUDINARY_API_KEY;
-    process.env.CLOUDINARY_API_SECRET = secrets.cloudinary.apiSecret || process.env.CLOUDINARY_API_SECRET;
-
-    // Reconfigure Cloudinary with new secrets
-    configureCloudinary({
-      cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-      api_key: process.env.CLOUDINARY_API_KEY,
-      api_secret: process.env.CLOUDINARY_API_SECRET
-    });
+    
+    // Cloudinary removed - no longer needed
 
     console.log('Secrets refreshed successfully');
 

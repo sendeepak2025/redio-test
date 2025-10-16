@@ -34,8 +34,8 @@ const StructuredReportSchema = new mongoose.Schema({
   radiologistId: { type: String }, // String for testing (not ObjectId)
   radiologistName: { type: String, required: true, default: 'Test Radiologist' },
   radiologistSignature: String, // Text signature (legacy)
-  radiologistSignatureUrl: String, // Cloudinary URL for signature image
-  radiologistSignaturePublicId: String, // Cloudinary public ID for deletion
+  radiologistSignatureUrl: String, // Local filesystem URL for signature image
+  radiologistSignaturePublicId: String, // Signature file identifier
   signedAt: Date,
   
   // Clinical Findings

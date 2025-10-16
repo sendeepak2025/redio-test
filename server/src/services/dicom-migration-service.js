@@ -57,7 +57,7 @@ class DICOMMigrationService {
 
     // Determine which method to use
     const useOrthanc = this.shouldUseOrthancPreview(context);
-    
+
     if (useOrthanc) {
       try {
         return await this.getFrameWithOrthanc(req, res, nodeFallback);
@@ -79,7 +79,7 @@ class DICOMMigrationService {
    */
   async getFrameWithOrthanc(req, res, nodeFallback) {
     const timer = this.metricsCollector.startTimer('orthanc_preview_migration');
-    
+
     try {
       const { studyUid, frameIndex } = req.params;
       const gIndex = Math.max(0, parseInt(frameIndex, 10) || 0);
@@ -100,11 +100,13 @@ class DICOMMigrationService {
 
       const { orthancInstanceId, localFrameIndex, instance } = mapping;
 
-      // Use the stored frame index if available (for multi-frame DICOM)
-      // const frameIndex = instance.orthancFrameIndex !== undefined ? instance.orthancFrameIndex : localFrameIndex;
+      // Use the local frame index (mapped from global index)
+      const actualFrameIndex = localFrameIndex;
+
+      console.log(`📸 Fetching frame from Orthanc: instanceId=${orthancInstanceId}, frameIndex=${actualFrameIndex}`);
 
       // Generate preview using Orthanc
-      const pngBuffer = await this.orthancClient.generatePreview(orthancInstanceId, frameIndex, {
+      const pngBuffer = await this.orthancClient.generatePreview(orthancInstanceId, actualFrameIndex, {
         quality: req.query.quality ? parseInt(req.query.quality) : undefined,
         returnUnsupportedImage: true
       });
@@ -140,7 +142,7 @@ class DICOMMigrationService {
     // The globalIndex directly maps to the instance index
     if (globalIndex >= 0 && globalIndex < instances.length) {
       const inst = instances[globalIndex];
-      
+
       // Skip instances without Orthanc ID
       if (!inst.orthancInstanceId) {
         // Try to resolve Orthanc ID from SOP Instance UID
@@ -149,7 +151,7 @@ class DICOMMigrationService {
           console.warn('Instance not available in Orthanc:', inst._id?.toString?.());
           return null;
         }
-        
+
         // Update instance with Orthanc ID for future use
         await Instance.updateOne(
           { _id: inst._id },
@@ -158,13 +160,13 @@ class DICOMMigrationService {
         inst.orthancInstanceId = orthancInstanceId;
       }
 
-      return { 
-        orthancInstanceId: inst.orthancInstanceId, 
+      return {
+        orthancInstanceId: inst.orthancInstanceId,
         localFrameIndex: inst.orthancFrameIndex || 0,
         instance: inst
       };
     }
-    
+
     return null;
   }
 

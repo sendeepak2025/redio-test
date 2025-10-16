@@ -1,7 +1,6 @@
 const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
-const { v2: cloudinary } = require('cloudinary');
 const { PNG } = require('pngjs');
 const Instance = require('../models/Instance');
 const dicomParser = require("dicom-parser");
@@ -24,13 +23,11 @@ function generatePlaceholderPng(width = 256, height = 256) {
   return PNG.sync.write(png);
 }
 
-// Helper: resolve Cloudinary raw URL for an instance
+// Helper: resolve DICOM URL for an instance (Orthanc only)
 function resolveDicomUrl(inst) {
   if (!inst) return null;
-  if (inst.cloudinaryUrl) return inst.cloudinaryUrl;
-  if (inst.cloudinaryPublicId) {
-    return cloudinary.url(inst.cloudinaryPublicId, { resource_type: 'raw', secure: true });
-  }
+  // Use Orthanc URL if available
+  if (inst.orthancUrl) return inst.orthancUrl;
   return null;
 }
 
@@ -376,29 +373,39 @@ async function getFrame(req, res) {
     const { studyUid, frameIndex } = req.params;
     const gIndex = Math.max(0, parseInt(frameIndex, 10) || 0);
 
-    // Check if MongoDB is connected
-    const mongoose = require('mongoose');
-    const isMongoConnected = mongoose.connection.readyState === 1;
+    // Use frame cache service (handles filesystem cache + Orthanc fallback)
+    const { getFrameCacheService } = require('../services/frame-cache-service');
+    const frameCacheService = getFrameCacheService();
 
-    // Try filesystem first (faster and works without MongoDB)
-    const BACKEND_DIR = path.resolve(__dirname, '../../backend');
-    const framePath = path.join(BACKEND_DIR, `uploaded_frames_${studyUid}`, `frame_${String(gIndex).padStart(3, '0')}.png`);
-    
-    console.log(`🔍 getFrame: Looking for frame at: ${framePath}`);
-    
-    if (fs.existsSync(framePath)) {
-      console.log(`✅ getFrame: serving from filesystem: ${framePath}`);
-      const frameBuffer = fs.readFileSync(framePath);
+    console.log(`🔍 getFrame: Requesting frame ${gIndex} for study ${studyUid}`);
+
+    const frameBuffer = await frameCacheService.getFrame(studyUid, gIndex);
+
+    if (frameBuffer) {
       res.setHeader('Content-Type', 'image/png');
       res.setHeader('Cache-Control', 'public, max-age=31536000'); // Cache for 1 year
       res.setHeader('Access-Control-Allow-Origin', '*'); // Allow CORS
+      res.setHeader('X-Frame-Source', 'cache'); // Indicate source
       return res.end(frameBuffer);
-    } else {
-      console.log(`❌ getFrame: frame not found in filesystem: ${framePath}`);
+    }
+
+    // Fallback to legacy code if frame cache service fails
+    const BACKEND_DIR = path.resolve(__dirname, '../../backend');
+    const framePath = path.join(BACKEND_DIR, `uploaded_frames_${studyUid}`, `frame_${String(gIndex).padStart(3, '0')}.png`);
+
+    if (fs.existsSync(framePath)) {
+      console.log(`✅ getFrame: serving from filesystem (legacy): ${framePath}`);
+      const frameBuffer = fs.readFileSync(framePath);
+      res.setHeader('Content-Type', 'image/png');
+      res.setHeader('Cache-Control', 'public, max-age=31536000');
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('X-Frame-Source', 'filesystem-legacy');
+      return res.end(frameBuffer);
     }
 
     // If not in filesystem and MongoDB not connected, return placeholder
-    if (!isMongoConnected) {
+    const mongoose = require('mongoose');
+    if (mongoose.connection.readyState !== 1) {
       console.warn(`getFrame: frame not in filesystem and MongoDB not connected for study ${studyUid}, frame ${gIndex}`);
       res.setHeader('Content-Type', 'image/png');
       return res.end(generatePlaceholderPng());
@@ -414,7 +421,7 @@ async function getFrame(req, res) {
       res.setHeader('Content-Type', 'image/png');
       return res.end(generatePlaceholderPng());
     }
-    
+
     if (!instances || instances.length === 0) {
       console.warn('getFrame: no instances found for study', studyUid);
       res.setHeader('Content-Type', 'image/png');
@@ -462,7 +469,7 @@ async function getFrame(req, res) {
     // 4) ensure view length matches expected pixels (quick sanity check)
     const expectedSamples = meta.rows * meta.cols * (meta.samplesPerPixel || 1);
     if ((meta.samplesPerPixel === 3 && view.length !== expectedSamples * 3) ||
-        (meta.samplesPerPixel !== 3 && (view.length !== expectedSamples && view.length !== expectedSamples * (meta.bitsAllocated / 8)))) {
+      (meta.samplesPerPixel !== 3 && (view.length !== expectedSamples && view.length !== expectedSamples * (meta.bitsAllocated / 8)))) {
       // Not always fatal (padding), but warn
       console.warn('getFrame: view length mismatch', {
         viewLength: view.length,
@@ -506,12 +513,6 @@ async function getFrame(req, res) {
 
 
 
-function dicofixUrl(url) { // some cloudinary raw URLs may need encoding
-  try {
-    return encodeURI(url);
-  } catch {
-    return url;
-  }
-}
+// Removed: dicofixUrl function (was for Cloudinary URLs)
 
 module.exports = { getFrame };

@@ -46,8 +46,8 @@ class OrthancInstanceController {
       let pngBuffer;
 
       if (useLegacyMethod) {
-        // Use legacy Cloudinary method for old instances
-        console.log('Using legacy Cloudinary method for frame retrieval');
+        // Use legacy local file method for old instances
+        console.log('Using legacy local file method for frame retrieval');
         const { getFrame: legacyGetFrame } = require('./instanceController');
         
         // Create a mock response object to capture the PNG
@@ -154,8 +154,8 @@ class OrthancInstanceController {
       if (!inst.orthancInstanceId) {
         console.warn('mapGlobalIndexToInstance: instance missing orthancInstanceId', inst._id?.toString?.());
         
-        // For legacy instances without Orthanc ID, try Cloudinary fallback
-        if (inst.cloudinaryUrl || inst.cloudinaryPublicId) {
+        // For legacy instances without Orthanc ID, try local file fallback
+        if (inst.localFilePath) {
           // Use single frame for legacy instances
           if (globalIndex === acc) {
             return {

@@ -199,10 +199,10 @@ class OrthancStudyService {
             // Try to get accurate frame count from instances
             try {
               const inst = await Instance.findOne({ studyInstanceUID: study.studyInstanceUID }).lean();
-              if (inst && inst.cloudinaryUrl) {
-                // Use existing countFramesFromCloudinary logic
-                const { countFramesFromCloudinary } = require('../controllers/studyController');
-                const frameCount = await countFramesFromCloudinary(inst);
+              if (inst && inst.orthancInstanceId) {
+                // Use existing countFramesFromOrthanc logic
+                const { countFramesFromOrthanc } = require('../controllers/studyController');
+                const frameCount = await countFramesFromOrthanc(inst);
                 study.numberOfInstances = frameCount;
               }
             } catch (error) {

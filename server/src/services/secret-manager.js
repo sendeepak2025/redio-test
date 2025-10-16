@@ -317,11 +317,6 @@ async function getApplicationSecrets() {
       return {
         database: {
           uri: process.env.MONGODB_URI
-        },
-        cloudinary: {
-          cloudName: process.env.CLOUDINARY_CLOUD_NAME,
-          apiKey: process.env.CLOUDINARY_API_KEY,
-          apiSecret: process.env.CLOUDINARY_API_SECRET
         }
       };
     }
@@ -329,32 +324,15 @@ async function getApplicationSecrets() {
     // Define secret paths for different environments (for vault/aws providers)
     const environment = process.env.NODE_ENV || 'development';
     const secretPaths = {
-      database: `node-server/${environment}/database`,
-      cloudinary: `node-server/${environment}/cloudinary`
+      database: `node-server/${environment}/database`
     };
 
-    // Retrieve all secrets in parallel with error handling
-    const [databaseSecrets, cloudinarySecrets] = await Promise.allSettled([
-      secretManager.getSecret(secretPaths.database),
-      secretManager.getSecret(secretPaths.cloudinary)
-    ]);
-
-    // Extract values from settled promises
-    const getSecretValue = (result, defaultValue = {}) => {
-      return result.status === 'fulfilled' ? result.value : defaultValue;
-    };
-
-    const databaseData = getSecretValue(databaseSecrets);
-    const cloudinaryData = getSecretValue(cloudinarySecrets);
+    // Retrieve database secrets
+    const databaseSecrets = await secretManager.getSecret(secretPaths.database).catch(() => ({}));
 
     return {
       database: {
-        uri: databaseData.mongodb_uri
-      },
-      cloudinary: {
-        cloudName: cloudinaryData.cloud_name,
-        apiKey: cloudinaryData.api_key,
-        apiSecret: cloudinaryData.api_secret
+        uri: databaseSecrets.mongodb_uri
       }
     };
 

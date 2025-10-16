@@ -73,10 +73,8 @@ router.get('/debug/:studyUid', async (req, res) => {
         instances: instances.map(inst => ({
           _id: inst._id,
           instanceNumber: inst.instanceNumber,
-          hasCloudinaryUrl: !!inst.cloudinaryUrl,
-          hasCloudinaryPublicId: !!inst.cloudinaryPublicId,
-          cloudinaryUrl: inst.cloudinaryUrl ? 'Present' : 'Missing',
-          cloudinaryPublicId: inst.cloudinaryPublicId ? 'Present' : 'Missing'
+          hasLocalFile: !!inst.localFilePath,
+          hasOrthancId: !!inst.orthancInstanceId
         }))
       }
     });
@@ -197,9 +195,7 @@ router.get('/upload/config-check', (req, res) => {
     config.mongodbUri = process.env.MONGODB_URI.replace(/\/\/[^:]+:[^@]+@/, '//***:***@');
   }
 
-  if (!process.env.CLOUDINARY_CLOUD_NAME) {
-    warnings.push('CLOUDINARY_CLOUD_NAME is not set (optional for PACS uploads)');
-  }
+  // Cloudinary removed - no longer needed
 
   const isValid = errors.length === 0;
 

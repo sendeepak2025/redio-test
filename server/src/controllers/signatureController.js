@@ -1,7 +1,9 @@
-const cloudinary = require('cloudinary').v2;
+const fs = require('fs');
+const path = require('path');
 
 /**
- * Upload signature image to Cloudinary
+ * Upload signature image to filesystem
+ * Cloudinary removed - using local storage
  */
 exports.uploadSignature = async (req, res) => {
   try {
@@ -14,30 +16,35 @@ exports.uploadSignature = async (req, res) => {
       });
     }
 
-    // Upload to Cloudinary
-    const uploadResult = await cloudinary.uploader.upload(signatureDataUrl, {
-      folder: 'medical-reports/signatures',
-      public_id: `signature_${reportId || Date.now()}`,
-      resource_type: 'image',
-      tags: ['signature', 'medical-report', radiologistName || 'unknown'],
-      context: {
-        reportId: reportId || 'draft',
-        radiologist: radiologistName || 'Unknown',
-        uploadedAt: new Date().toISOString()
-      }
-    });
+    // Create signatures directory
+    const signaturesDir = path.join(__dirname, '../../backend/signatures');
+    if (!fs.existsSync(signaturesDir)) {
+      fs.mkdirSync(signaturesDir, { recursive: true });
+    }
 
-    console.log('✅ Signature uploaded to Cloudinary:', uploadResult.secure_url);
+    // Extract base64 data
+    const base64Data = signatureDataUrl.replace(/^data:image\/\w+;base64,/, '');
+    const buffer = Buffer.from(base64Data, 'base64');
+
+    // Generate filename
+    const filename = `signature_${reportId || Date.now()}.png`;
+    const filepath = path.join(signaturesDir, filename);
+
+    // Save to filesystem
+    fs.writeFileSync(filepath, buffer);
+
+    const signatureUrl = `/api/signature/file/${filename}`;
+
+    console.log('✅ Signature saved to filesystem:', filepath);
 
     res.json({
       success: true,
       data: {
-        signatureUrl: uploadResult.secure_url,
-        publicId: uploadResult.public_id,
-        width: uploadResult.width,
-        height: uploadResult.height,
-        format: uploadResult.format,
-        uploadedAt: new Date().toISOString()
+        signatureUrl: signatureUrl,
+        filename: filename,
+        uploadedAt: new Date().toISOString(),
+        reportId: reportId,
+        radiologist: radiologistName
       },
       message: 'Signature uploaded successfully'
     });
@@ -53,36 +60,26 @@ exports.uploadSignature = async (req, res) => {
 };
 
 /**
- * Get signature by report ID
+ * Get signature file
  */
 exports.getSignature = async (req, res) => {
   try {
-    const { reportId } = req.params;
+    const { filename } = req.params;
 
-    // Search for signature in Cloudinary
-    const result = await cloudinary.search
-      .expression(`folder:medical-reports/signatures AND context.reportId=${reportId}`)
-      .sort_by('created_at', 'desc')
-      .max_results(1)
-      .execute();
+    const signaturesDir = path.join(__dirname, '../../backend/signatures');
+    const filepath = path.join(signaturesDir, filename);
 
-    if (result.resources.length === 0) {
+    if (!fs.existsSync(filepath)) {
       return res.status(404).json({
         success: false,
         error: 'Signature not found'
       });
     }
 
-    const signature = result.resources[0];
-
-    res.json({
-      success: true,
-      data: {
-        signatureUrl: signature.secure_url,
-        publicId: signature.public_id,
-        uploadedAt: signature.created_at
-      }
-    });
+    // Send file
+    res.setHeader('Content-Type', 'image/png');
+    res.setHeader('Cache-Control', 'public, max-age=31536000');
+    res.sendFile(filepath);
 
   } catch (error) {
     console.error('Error fetching signature:', error);
@@ -99,21 +96,25 @@ exports.getSignature = async (req, res) => {
  */
 exports.deleteSignature = async (req, res) => {
   try {
-    const { publicId } = req.params;
+    const { filename } = req.params;
 
-    const result = await cloudinary.uploader.destroy(publicId);
+    const signaturesDir = path.join(__dirname, '../../backend/signatures');
+    const filepath = path.join(signaturesDir, filename);
 
-    if (result.result === 'ok') {
-      res.json({
-        success: true,
-        message: 'Signature deleted successfully'
-      });
-    } else {
-      res.status(404).json({
+    if (!fs.existsSync(filepath)) {
+      return res.status(404).json({
         success: false,
         error: 'Signature not found or already deleted'
       });
     }
+
+    // Delete file
+    fs.unlinkSync(filepath);
+
+    res.json({
+      success: true,
+      message: 'Signature deleted successfully'
+    });
 
   } catch (error) {
     console.error('Error deleting signature:', error);

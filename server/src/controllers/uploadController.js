@@ -1,23 +1,16 @@
 const multer = require('multer');
-const { v2: cloudinary } = require('cloudinary');
 const Study = require('../models/Study');
 const Series = require('../models/Series');
 const Instance = require('../models/Instance');
 const { generateUID } = require('../utils/uid');
-// Add filesystem and DICOM parsing utilities
-const fs = require('fs');
-const path = require('path');
 const dicomParser = require('dicom-parser');
-const { PNG } = require('pngjs');
+const { getUnifiedOrthancService } = require('../services/unified-orthanc-service');
 
 const upload = multer({ storage: multer.memoryStorage() });
 
 function uploadMiddleware() {
   return upload.single('file');
 }
-
-// Backend base directory for storing uploaded studies and generated frames
-const BACKEND_DIR = path.resolve(__dirname, '../../backend');
 
 function parseDicomMetadata(buffer) {
   try {
@@ -99,90 +92,27 @@ function parseDicomMetadata(buffer) {
   }
 }
 
-function ensureDirectories(studyUID, seriesUID) {
-  const studyDir = path.join(BACKEND_DIR, 'uploaded_studies', studyUID, seriesUID);
-  const framesDir = path.join(BACKEND_DIR, `uploaded_frames_${studyUID}`);
-  fs.mkdirSync(studyDir, { recursive: true });
-  fs.mkdirSync(framesDir, { recursive: true });
-  return { studyDir, framesDir };
-}
 
-function writeDicomFile(studyDir, sopUID, buffer) {
-  const filePath = path.join(studyDir, `${sopUID}.dcm`);
-  fs.writeFileSync(filePath, buffer);
-  return filePath;
-}
-
-function generatePngFrameFromPixelData(meta) {
-  try {
-    const { rows, cols, bitsAllocated, samplesPerPixel, pixelDataOffset, dataSet, studyInstanceUID } = meta;
-    const framesDir = path.join(BACKEND_DIR, `uploaded_frames_${studyInstanceUID}`);
-    if (!rows || !cols || pixelDataOffset == null || !dataSet) {
-      // Create a placeholder image to avoid 404
-      const png = new PNG({ width: 256, height: 256 });
-      for (let y = 0; y < png.height; y++) {
-        for (let x = 0; x < png.width; x++) {
-          const idx = (png.width * y + x) << 2;
-          const v = ((x ^ y) & 0xff);
-          png.data[idx] = v;
-          png.data[idx + 1] = v;
-          png.data[idx + 2] = v;
-          png.data[idx + 3] = 255;
-        }
-      }
-      const outPath = path.join(framesDir, `frame_000.png`);
-      fs.writeFileSync(outPath, PNG.sync.write(png));
-      return 1;
-    }
-    const byteArray = dataSet.byteArray;
-    const frameBytes = rows * cols * samplesPerPixel * (bitsAllocated / 8);
-    // Only generate first frame for now
-    const frame0 = byteArray.slice(pixelDataOffset, pixelDataOffset + frameBytes);
-
-    let grayscale;
-    if (bitsAllocated === 16) {
-      const view = new Uint16Array(frame0.buffer, frame0.byteOffset, frame0.length / 2);
-      // Normalize to 0-255
-      let min = 65535, max = 0;
-      for (let i = 0; i < view.length; i++) { const v = view[i]; if (v < min) min = v; if (v > max) max = v; }
-      grayscale = Buffer.alloc(rows * cols);
-      const range = max - min || 1;
-      for (let i = 0; i < view.length; i++) {
-        grayscale[i] = Math.round(((view[i] - min) / range) * 255);
-      }
-    } else {
-      // 8-bit
-      const view = new Uint8Array(frame0.buffer, frame0.byteOffset, frame0.length);
-      grayscale = Buffer.from(view);
-    }
-
-    const png = new PNG({ width: cols, height: rows });
-    // Map grayscale to RGBA
-    for (let y = 0; y < rows; y++) {
-      for (let x = 0; x < cols; x++) {
-        const i = y * cols + x;
-        const g = grayscale[i] || 0;
-        const idx = (cols * y + x) << 2;
-        png.data[idx] = g;
-        png.data[idx + 1] = g;
-        png.data[idx + 2] = g;
-        png.data[idx + 3] = 255;
-      }
-    }
-    fs.writeFileSync(path.join(framesDir, `frame_000.png`), PNG.sync.write(png));
-    return 1;
-  } catch (e) {
-    console.error('Failed to generate PNG frame from DICOM:', e);
-    return 0;
-  }
-}
 
 async function handleUpload(req, res) {
   try {
-    if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded' });
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'No file uploaded' });
+    }
+
+    // Check MongoDB connection
+    const mongoose = require('mongoose');
+    if (mongoose.connection.readyState !== 1) {
+      console.error('❌ MongoDB not connected! Connection state:', mongoose.connection.readyState);
+      return res.status(500).json({
+        success: false,
+        message: 'Database not connected. Please check MongoDB connection.'
+      });
+    }
+
     const buffer = req.file.buffer;
 
-    // Parse DICOM metadata from uploaded file (fallback to generated UIDs)
+    // Parse DICOM metadata from uploaded file
     const meta = parseDicomMetadata(buffer);
     const { studyInstanceUID, seriesInstanceUID, sopInstanceUID } = meta;
 
@@ -192,28 +122,55 @@ async function handleUpload(req, res) {
     if (overridePatientID) meta.patientID = overridePatientID;
     if (overridePatientName) meta.patientName = overridePatientName;
 
-    // Ensure directories and persist original DICOM
-    const { studyDir, framesDir } = ensureDirectories(studyInstanceUID, seriesInstanceUID);
-    const storedDicomPath = writeDicomFile(studyDir, sopInstanceUID, buffer);
+    console.log(`📤 Uploading DICOM to Orthanc: ${sopInstanceUID}`);
 
-    // Try to generate a PNG frame for display (frame_000.png)
-    const generatedFrames = generatePngFrameFromPixelData(meta) || 0;
+    // Upload DICOM file directly to Orthanc PACS
+    const orthancService = getUnifiedOrthancService();
+    let orthancUploadResult;
 
-    // Upload a preview to Cloudinary (optional)
-    let uploadResult = { secure_url: '', public_id: '' };
     try {
-      uploadResult = await new Promise((resolve, reject) => {
-        const stream = cloudinary.uploader.upload_stream({ folder: 'dicom/previews', resource_type: 'auto' }, (err, result) => {
-          if (err) return reject(err);
-          resolve(result);
-        });
-        stream.end(buffer);
+      console.log(`   Buffer size: ${buffer.length} bytes`);
+      orthancUploadResult = await orthancService.uploadDicomFile(buffer);
+      console.log(`✅ Uploaded to Orthanc:`, orthancUploadResult);
+    } catch (orthancError) {
+      console.error('❌ Failed to upload to Orthanc:', orthancError.message);
+      console.error('   Error details:', orthancError);
+      console.error('   Stack:', orthancError.stack);
+      return res.status(500).json({
+        success: false,
+        message: `Failed to upload to Orthanc PACS: ${orthancError.message}`,
+        error: orthancError.message,
+        details: orthancError.response?.data || null
       });
-    } catch (clErr) {
-      console.warn('Cloudinary upload failed, continuing without preview:', clErr?.message || clErr);
     }
 
-    // Persist study, series, and instance metadata to MongoDB
+    // Extract Orthanc IDs from upload result
+    const orthancInstanceId = orthancUploadResult.ID;
+    const orthancStudyId = orthancUploadResult.ParentStudy;
+    const orthancSeriesId = orthancUploadResult.ParentSeries;
+    const orthancPatientId = orthancUploadResult.ParentPatient;
+
+    // Get frame count from Orthanc
+    let frameCount;
+    try {
+      frameCount = await orthancService.getFrameCount(orthancInstanceId);
+      console.log(`📊 Study: ${studyInstanceUID}, Frames: ${frameCount}`);
+    } catch (frameError) {
+      console.error('❌ Failed to get frame count:', frameError.message);
+      // Try to delete the uploaded instance from Orthanc
+      try {
+        await orthancService.deleteInstance(orthancInstanceId);
+        console.log('   Cleaned up Orthanc instance');
+      } catch (cleanupError) {
+        console.warn('   Could not cleanup Orthanc instance:', cleanupError.message);
+      }
+      return res.status(500).json({
+        success: false,
+        message: `Failed to get frame count: ${frameError.message}`
+      });
+    }
+
+    // Save study metadata to MongoDB
     await Study.updateOne(
       { studyInstanceUID },
       {
@@ -228,29 +185,75 @@ async function handleUpload(req, res) {
           modality: meta.modality || 'OT',
           studyDescription: meta.studyDescription || '',
           numberOfSeries: 1,
-          numberOfInstances: generatedFrames || 1
+          numberOfInstances: frameCount,
+          orthancStudyId: orthancStudyId
         }
       },
       { upsert: true }
     );
 
+    // Save series metadata to MongoDB
     await Series.updateOne(
       { studyInstanceUID, seriesInstanceUID },
-      { $set: { studyInstanceUID, seriesInstanceUID, modality: meta.modality || 'OT', seriesNumber: 1, description: meta.studyDescription || '' } },
+      {
+        $set: {
+          studyInstanceUID,
+          seriesInstanceUID,
+          modality: meta.modality || 'OT',
+          seriesNumber: 1,
+          description: meta.studyDescription || '',
+          orthancSeriesId: orthancSeriesId
+        }
+      },
       { upsert: true }
     );
 
-    const instanceDoc = await Instance.create({
-      studyInstanceUID,
-      seriesInstanceUID,
-      sopInstanceUID,
-      instanceNumber: 1,
-      modality: meta.modality || 'OT',
-      cloudinaryUrl: uploadResult.secure_url,
-      cloudinaryPublicId: uploadResult.public_id
-    });
+    // Create instance records (one per frame for multi-frame DICOM)
+    const instanceRecords = [];
+    for (let frameIndex = 0; frameIndex < frameCount; frameIndex++) {
+      instanceRecords.push({
+        studyInstanceUID,
+        seriesInstanceUID,
+        sopInstanceUID: frameCount > 1 ? `${sopInstanceUID}.frame${frameIndex}` : sopInstanceUID,
+        instanceNumber: frameIndex + 1,
+        modality: meta.modality || 'OT',
+        rows: meta.rows,
+        columns: meta.cols,
+        numberOfFrames: frameCount,
+        // Orthanc storage (primary)
+        orthancInstanceId: orthancInstanceId,
+        orthancUrl: `${process.env.ORTHANC_URL || 'http://localhost:8042'}/instances/${orthancInstanceId}`,
+        orthancFrameIndex: frameIndex,
+        orthancStudyId: orthancStudyId,
+        orthancSeriesId: orthancSeriesId,
+        useOrthancPreview: true
+      });
+    }
 
-    // Link study to patient (create/update patient record and attach study ID)
+    // Bulk insert instances
+    console.log(`💾 Saving ${instanceRecords.length} instance records to MongoDB...`);
+    console.log(`   First instance: studyUID=${instanceRecords[0].studyInstanceUID}, orthancInstanceId=${instanceRecords[0].orthancInstanceId}`);
+
+    let insertedInstances;
+    try {
+      insertedInstances = await Instance.insertMany(instanceRecords, { ordered: false });
+      console.log(`✅ Successfully inserted ${insertedInstances.length} instance records in MongoDB`);
+    } catch (error) {
+      // Ignore duplicate key errors
+      if (error.code === 11000) {
+        console.warn(`⚠️  Some instances already exist (duplicate key), continuing...`);
+        insertedInstances = instanceRecords;
+      } else {
+        console.error(`❌ Failed to insert instances:`, error);
+        throw error;
+      }
+    }
+
+    // Verify instances were saved
+    const savedCount = await Instance.countDocuments({ studyInstanceUID });
+    console.log(`✅ Verified: ${savedCount} instances in MongoDB for study ${studyInstanceUID}`);
+
+    // Link study to patient
     try {
       const Patient = require('../models/Patient');
       const pid = meta.patientID || 'Unknown';
@@ -259,18 +262,20 @@ async function handleUpload(req, res) {
 
       const existing = await Patient.findOne({ patientID: pid }).lean();
       if (existing) {
-        // Only update name if override explicitly provided; otherwise keep existing
         const update = { $addToSet: { studyIds: studyInstanceUID } };
         if (pnameOverride && pnameOverride.trim()) {
           update.$set = { patientName: pnameOverride.trim() };
         }
         await Patient.updateOne({ patientID: pid }, update, { upsert: true });
       } else {
-        // Create new patient with override or DICOM name
         await Patient.updateOne(
           { patientID: pid },
           {
-            $set: { patientID: pid, patientName: (pnameOverride && pnameOverride.trim()) ? pnameOverride.trim() : pnameFromDicom },
+            $set: {
+              patientID: pid,
+              patientName: (pnameOverride && pnameOverride.trim()) ? pnameOverride.trim() : pnameFromDicom,
+              orthancPatientId: orthancPatientId
+            },
             $addToSet: { studyIds: studyInstanceUID }
           },
           { upsert: true }
@@ -280,13 +285,23 @@ async function handleUpload(req, res) {
       console.warn('Patient linking skipped or failed:', patientErr?.message || patientErr);
     }
 
-    res.json({ success: true, data: {
-      studyInstanceUID,
-      seriesInstanceUID,
-      instance: instanceDoc,
-      patientID: meta.patientID || 'Unknown',
-      patientName: meta.patientName || 'Unknown'
-    }});
+    res.json({
+      success: true,
+      message: `Successfully uploaded DICOM file with ${frameCount} frame(s) to Orthanc PACS`,
+      data: {
+        studyInstanceUID,
+        seriesInstanceUID,
+        sopInstanceUID,
+        frameCount,
+        orthancInstanceId,
+        orthancStudyId,
+        orthancSeriesId,
+        instances: insertedInstances.length || instanceRecords.length,
+        patientID: meta.patientID || 'Unknown',
+        patientName: meta.patientName || 'Unknown',
+        storage: 'orthanc-pacs'
+      }
+    });
   } catch (e) {
     console.error('Upload failed:', e);
     res.status(500).json({ success: false, message: e.message });

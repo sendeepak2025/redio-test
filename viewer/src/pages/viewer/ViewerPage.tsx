@@ -7,6 +7,8 @@ import { MedicalImageViewer } from '../../components/viewer/MedicalImageViewer'
 import Cornerstone3DViewer from '../../components/viewer/Cornerstone3DViewer'
 import { ReportingInterface } from '../../components/reporting/ReportingInterface'
 import { PatientContextPanel } from '../../components/worklist/PatientContextPanel'
+import AIAnalysisPanel from '../../components/ai/AIAnalysisPanel'
+import SimilarImagesPanel from '../../components/ai/SimilarImagesPanel'
 import ApiService from '../../services/ApiService'
 
 interface TabPanelProps {
@@ -321,6 +323,8 @@ const ViewerPage: React.FC = () => {
             <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
               <Tabs value={activeTab} onChange={(_, newValue) => setActiveTab(newValue)}>
                 <Tab label="Image Viewer" />
+                <Tab label="AI Analysis" />
+                <Tab label="Similar Cases" />
                 <Tab label="Structured Reporting" />
               </Tabs>
             </Box>
@@ -362,6 +366,43 @@ const ViewerPage: React.FC = () => {
               </TabPanel>
 
               <TabPanel value={activeTab} index={1}>
+                {studyData ? (
+                  <AIAnalysisPanel
+                    studyInstanceUID={studyData.studyInstanceUID}
+                    frameIndex={0}
+                    patientContext={{
+                      age: studyData.patientAge,
+                      sex: studyData.patientSex,
+                      clinicalHistory: studyData.clinicalHistory,
+                      indication: studyData.indication
+                    }}
+                  />
+                ) : (
+                  <Box sx={{ p: 3 }}>
+                    <Typography variant="h6" color="text.secondary">
+                      No study data available for AI analysis
+                    </Typography>
+                  </Box>
+                )}
+              </TabPanel>
+
+              <TabPanel value={activeTab} index={2}>
+                {studyData ? (
+                  <SimilarImagesPanel
+                    studyInstanceUID={studyData.studyInstanceUID}
+                    frameIndex={0}
+                    topK={5}
+                  />
+                ) : (
+                  <Box sx={{ p: 3 }}>
+                    <Typography variant="h6" color="text.secondary">
+                      No study data available for similarity search
+                    </Typography>
+                  </Box>
+                )}
+              </TabPanel>
+
+              <TabPanel value={activeTab} index={3}>
                 {studyData ? (
                   <ReportingInterface
                     studyInstanceUID={studyData.studyInstanceUID}

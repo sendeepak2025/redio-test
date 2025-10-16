@@ -291,6 +291,117 @@ export const getOrthancSeriesPreviewUrl = (seriesId: string): string => {
   return `http://localhost:8042/series/${seriesId}/preview`
 }
 
+/**
+ * Medical AI API Methods
+ */
+
+/**
+ * Analyze study with AI (MedSigLIP + MedGemma)
+ */
+export const analyzeStudyWithAI = async (
+  studyInstanceUID: string,
+  frameIndex: number = 0,
+  patientContext?: any
+) => {
+  const response = await apiCall('/api/medical-ai/analyze-study', {
+    method: 'POST',
+    body: JSON.stringify({
+      studyInstanceUID,
+      frameIndex,
+      patientContext
+    })
+  })
+  return response.json()
+}
+
+/**
+ * Classify image with MedSigLIP
+ */
+export const classifyImageWithAI = async (
+  studyInstanceUID: string,
+  frameIndex: number = 0
+) => {
+  const response = await apiCall('/api/medical-ai/classify-image', {
+    method: 'POST',
+    body: JSON.stringify({
+      studyInstanceUID,
+      frameIndex
+    })
+  })
+  return response.json()
+}
+
+/**
+ * Generate radiology report with MedGemma
+ */
+export const generateAIReport = async (
+  studyInstanceUID: string,
+  frameIndex: number = 0,
+  patientContext?: any
+) => {
+  const response = await apiCall('/api/medical-ai/generate-report', {
+    method: 'POST',
+    body: JSON.stringify({
+      studyInstanceUID,
+      frameIndex,
+      patientContext
+    })
+  })
+  return response.json()
+}
+
+/**
+ * Find similar images using MedSigLIP
+ */
+export const findSimilarImages = async (
+  studyInstanceUID: string,
+  frameIndex: number = 0,
+  topK: number = 5
+) => {
+  const response = await apiCall('/api/medical-ai/find-similar', {
+    method: 'POST',
+    body: JSON.stringify({
+      studyInstanceUID,
+      frameIndex,
+      topK
+    })
+  })
+  return response.json()
+}
+
+/**
+ * Summarize medical text with MedGemma
+ */
+export const summarizeMedicalText = async (
+  text: string,
+  summaryType: 'brief' | 'detailed' | 'bullet_points' = 'brief'
+) => {
+  const response = await apiCall('/api/medical-ai/summarize-text', {
+    method: 'POST',
+    body: JSON.stringify({
+      text,
+      summaryType
+    })
+  })
+  return response.json()
+}
+
+/**
+ * Get saved AI analysis for a study
+ */
+export const getStudyAIAnalysis = async (studyInstanceUID: string) => {
+  const response = await apiCall(`/api/medical-ai/study/${studyInstanceUID}/analysis`)
+  return response.json()
+}
+
+/**
+ * Check AI services health
+ */
+export const checkAIHealth = async () => {
+  const response = await apiCall('/api/medical-ai/health')
+  return response.json()
+}
+
 export default {
   apiCall,
   uploadFile,
@@ -314,4 +425,12 @@ export default {
   getOrthancInstancePreviewUrl,
   getOrthancInstanceImageUrl,
   getOrthancSeriesPreviewUrl,
+  // Medical AI API
+  analyzeStudyWithAI,
+  classifyImageWithAI,
+  generateAIReport,
+  findSimilarImages,
+  summarizeMedicalText,
+  getStudyAIAnalysis,
+  checkAIHealth,
 }
