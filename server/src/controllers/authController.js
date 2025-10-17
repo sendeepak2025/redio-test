@@ -12,6 +12,8 @@ function signAccessToken(user) {
     username: user.username,
     roles: user.roles,
     permissions: user.permissions,
+    // Convert ObjectId to string for JWT
+    hospitalId: user.id ? user.id.toString() : null,
   }
   return jwt.sign(payload, process.env.JWT_SECRET || 'dev_secret', { expiresIn: ACCESS_TOKEN_EXPIRES_IN })
 }
@@ -33,38 +35,64 @@ function setRefreshCookie(res, token) {
 
 exports.login = async (req, res) => {
   try {
-    const { username, password } = req.body
-    if (!username || !password) {
-      return res.status(400).json({ success: false, message: 'Username and password required' })
+    const { username, password, email } = req.body
+    
+    // Allow login with either username or email
+    if ((!username && !email) || !password) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Username/email and password required' 
+      })
     }
 
-    const user = await User.findOne({ username })
+    // Find user by username or email
+    const query = username ? { username } : { email }
+    const user = await User.findOne(query)
+    
     if (!user || !user.isActive) {
-      return res.status(401).json({ success: false, message: 'Invalid credentials' })
+      return res.status(401).json({ 
+        success: false, 
+        message: 'Invalid credentials' 
+      })
     }
 
     const ok = await bcrypt.compare(password, user.passwordHash)
     if (!ok) {
-      return res.status(401).json({ success: false, message: 'Invalid credentials' })
+      return res.status(401).json({ 
+        success: false, 
+        message: 'Invalid credentials' 
+      })
     }
 
-    const accessToken = signAccessToken(user.toPublicJSON())
-    const refreshToken = signRefreshToken(user.toPublicJSON())
+    const userPublic = user.toPublicJSON()
+    const accessToken = signAccessToken(userPublic)
+    const refreshToken = signRefreshToken(userPublic)
 
     setRefreshCookie(res, refreshToken)
 
     user.lastLogin = new Date()
     await user.save()
 
+    // Determine primary role for frontend routing
+    const primaryRole = user.getPrimaryRole()
+
+    console.log(`✅ User logged in: ${user.username} (${primaryRole})`)
+
     return res.json({
       success: true,
       accessToken,
       refreshToken,
-      user: user.toPublicJSON(),
+      user: userPublic,
+      role: primaryRole, // Primary role for routing
+      // Convert ObjectId to string for response
+      hospitalId: user._id ? user._id.toString() : null
     })
   } catch (err) {
     console.error('Login error:', err)
-    return res.status(500).json({ success: false, message: 'Server error' })
+    return res.status(500).json({ 
+      success: false, 
+      message: 'Server error' 
+    })
   }
 }
 

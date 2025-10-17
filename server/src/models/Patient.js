@@ -5,7 +5,16 @@ const PatientSchema = new mongoose.Schema({
   patientName: { type: String },
   birthDate: { type: String },
   sex: { type: String },
-  studyIds: { type: [String], default: [] }
+  studyIds: { type: [String], default: [] },
+  hospitalId: { 
+    type: mongoose.Schema.Types.ObjectId, 
+    ref: 'User', 
+    index: true, 
+    required: false 
+  } // Hospital reference using ObjectId
 }, { timestamps: true });
+
+// Index for hospital-based queries
+PatientSchema.index({ hospitalId: 1, patientID: 1 });
 
 module.exports = mongoose.model('Patient', PatientSchema);

@@ -37,6 +37,8 @@ import {
   LocalHospital as HospitalIcon,
   Science as ScienceIcon,
 } from '@mui/icons-material'
+import { useAppDispatch } from '../../store/hooks'
+import { logout } from '../../store/slices/authSlice'
 
 const drawerWidth = 280
 
@@ -47,6 +49,7 @@ interface MainLayoutProps {
 export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const navigate = useNavigate()
   const location = useLocation()
+  const dispatch = useAppDispatch()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [userMenuAnchor, setUserMenuAnchor] = useState<null | HTMLElement>(null)
   const [usersMenuOpen, setUsersMenuOpen] = useState(false)
@@ -71,9 +74,15 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     setUserMenuAnchor(null)
   }
 
-  const handleLogout = () => {
-    // Implement logout logic
-    navigate('/login')
+  const handleLogout = async () => {
+    try {
+      await dispatch(logout()).unwrap()
+      navigate('/login', { replace: true })
+    } catch (error) {
+      console.error('Logout failed:', error)
+      // Force navigation even if logout fails
+      navigate('/login', { replace: true })
+    }
   }
 
   const isActive = (path: string) => {

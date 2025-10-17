@@ -6,12 +6,12 @@
 const express = require('express')
 const router = express.Router()
 const viewerSelectionController = require('../controllers/viewerSelectionController')
-const { authenticateToken } = require('../middleware/authMiddleware')
+const { authenticate } = require('../middleware/authMiddleware')
 const { createRateLimiter } = require('../middleware/rateLimitMiddleware')
 
 // Apply authentication middleware to all routes
 // Comment out if you want to test without authentication
-// router.use(authenticateToken)
+// router.use(authenticate)
 
 // Apply rate limiting: 100 requests per minute per user/IP
 const rateLimiter = createRateLimiter({

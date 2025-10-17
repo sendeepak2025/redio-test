@@ -22,6 +22,13 @@ const getBackendUrl = (): string => {
 const BACKEND_URL = getBackendUrl()
 
 /**
+ * Get auth token from storage
+ */
+export const getAuthToken = (): string | null => {
+  return localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken')
+}
+
+/**
  * Make an API call to the backend
  */
 export const apiCall = async (
@@ -32,10 +39,15 @@ export const apiCall = async (
 
   console.log(`API Call: ${options.method || 'GET'} ${url}`)
 
+  // Get auth token
+   const  token = getAuthToken()
+  
   const response = await fetch(url, {
     ...options,
+    credentials: 'include', // Send cookies
     headers: {
       'Content-Type': 'application/json',
+      ...(token && { 'Authorization': `Bearer ${token}` }),
       ...options.headers,
     },
   })
@@ -57,9 +69,16 @@ export const uploadFile = async (
   const formData = new FormData()
   formData.append('file', file)
 
+  // Get auth token
+  const token = getAuthToken()
+
   const response = await fetch(url, {
     method: 'POST',
     body: formData,
+    credentials: 'include', // Send cookies
+    headers: {
+      ...(token && { 'Authorization': `Bearer ${token}` }),
+    },
   })
 
   return response
@@ -218,10 +237,15 @@ export const uploadDicomFileForPatient = async (file: File, patientID: string, p
   formData.append('file', file)
   formData.append('patientID', patientID)
   if (patientName) formData.append('patientName', patientName)
+  const token = getAuthToken()
 
   const response = await fetch(url, {
     method: 'POST',
     body: formData,
+      credentials: 'include',
+    headers: {
+      ...(token && { Authorization: `Bearer ${token}` }),
+    },
   })
   return response.json()
 }

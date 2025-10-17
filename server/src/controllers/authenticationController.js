@@ -1,6 +1,33 @@
 const passport = require('passport');
 const AuthenticationService = require('../services/authentication-service');
-const { logAuthentication, logUnauthorizedAccess } = require('../middleware/auditMiddleware');
+const { auditLogger } = require('../middleware/auditMiddleware');
+
+// Helper functions for audit logging
+const logAuthentication = (req, details) => {
+  auditLogger.logAccessEvent('authentication', {
+    userId: details.userId,
+    username: req.body?.username
+  }, {
+    method: details.method,
+    status: details.status,
+    ip: req.ip,
+    userAgent: req.get('user-agent')
+  });
+};
+
+const logUnauthorizedAccess = (req, details) => {
+  auditLogger.logAccessEvent('unauthorized_access', {
+    userId: details.userId,
+    username: details.username || req.body?.username
+  }, {
+    reason: details.reason,
+    error: details.error,
+    ip: details.ip || req.ip,
+    country: details.country,
+    method: details.method,
+    userAgent: req.get('user-agent')
+  });
+};
 
 class AuthenticationController {
   constructor() {

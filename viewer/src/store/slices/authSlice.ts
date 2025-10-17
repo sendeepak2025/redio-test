@@ -6,6 +6,8 @@ export interface AuthState {
   user: User | null
   accessToken: string | null
   refreshToken: string | null
+  role: string | null // Primary role for routing
+  hospitalId: string | null
   isAuthenticated: boolean
   isLoading: boolean
   error: string | null
@@ -16,6 +18,8 @@ const initialState: AuthState = {
   user: null,
   accessToken: null,
   refreshToken: null,
+  role: null,
+  hospitalId: null,
   isAuthenticated: false,
   isLoading: false,
   error: null,
@@ -111,6 +115,8 @@ const authSlice = createSlice({
       state.user = null
       state.accessToken = null
       state.refreshToken = null
+      state.role = null
+      state.hospitalId = null
       state.isAuthenticated = false
       state.error = null
     },
@@ -127,6 +133,8 @@ const authSlice = createSlice({
         state.user = action.payload.user
         state.accessToken = action.payload.accessToken
         state.refreshToken = action.payload.refreshToken
+        state.role = action.payload.role
+        state.hospitalId = action.payload.hospitalId || null
         state.isAuthenticated = true
         state.lastActivity = Date.now()
         state.error = null
@@ -146,6 +154,8 @@ const authSlice = createSlice({
         state.user = null
         state.accessToken = null
         state.refreshToken = null
+        state.role = null
+        state.hospitalId = null
         state.isAuthenticated = false
         state.isLoading = false
         state.error = null
@@ -155,6 +165,8 @@ const authSlice = createSlice({
         state.user = null
         state.accessToken = null
         state.refreshToken = null
+        state.role = null
+        state.hospitalId = null
         state.isAuthenticated = false
         state.isLoading = false
       })
@@ -224,3 +236,5 @@ export const selectIsAuthenticated = (state: { auth: AuthState }) => state.auth.
 export const selectAuthLoading = (state: { auth: AuthState }) => state.auth.isLoading
 export const selectAuthError = (state: { auth: AuthState }) => state.auth.error
 export const selectAccessToken = (state: { auth: AuthState }) => state.auth.accessToken
+export const selectUserRole = (state: { auth: AuthState }) => state.auth.role
+export const selectHospitalId = (state: { auth: AuthState }) => state.auth.hospitalId

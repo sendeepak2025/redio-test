@@ -6,6 +6,7 @@ export interface User {
   lastName: string
   roles: string[]
   permissions: string[]
+  hospitalId?: string
   isActive: boolean
   isVerified: boolean
   mfaEnabled: boolean
@@ -26,6 +27,8 @@ export interface LoginResponse {
   accessToken: string
   refreshToken: string
   user: User
+  role: string // Primary role for routing: 'superadmin' | 'admin' | 'radiologist' | 'staff' | 'user'
+  hospitalId?: string
   mfaSetupRequired?: boolean
 }
 

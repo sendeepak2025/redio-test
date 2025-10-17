@@ -5,32 +5,36 @@ import type {
   LoginResponse, 
   RefreshTokenResponse 
 } from '../types/auth'
-import { mockAuthService } from './mockAuthService'
 
 class AuthService {
   private baseURL = '/auth'
 
   async login(credentials: LoginCredentials): Promise<LoginResponse> {
-    // Always call backend API; remove mock in dev
+    // Always call backend API
     const response: AxiosResponse<LoginResponse> = await axios.post(
       `${this.baseURL}/login`,
       credentials,
-      { withCredentials: true }
+      { 
+        withCredentials: true, // Send cookies
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      }
     )
     
     if (response.data.success) {
-      // Store tokens in axios defaults
-      this.setAuthToken(response.data.accessToken)
-      // Persist tokens and user if rememberMe
-      if (credentials.rememberMe) {
-        localStorage.setItem('accessToken', response.data.accessToken)
-        localStorage.setItem('refreshToken', response.data.refreshToken)
-        localStorage.setItem('user', JSON.stringify(response.data.user))
-      } else {
-        sessionStorage.setItem('accessToken', response.data.accessToken)
-        sessionStorage.setItem('refreshToken', response.data.refreshToken)
-        sessionStorage.setItem('user', JSON.stringify(response.data.user))
-      }
+      const { accessToken, refreshToken, user } = response.data
+      
+      // Set token in axios headers for all future requests
+      this.setAuthToken(accessToken)
+      
+      // Persist tokens and user data
+      const storage = credentials.rememberMe ? localStorage : sessionStorage
+      storage.setItem('accessToken', accessToken)
+      storage.setItem('refreshToken', refreshToken)
+      storage.setItem('user', JSON.stringify(user))
+      
+      console.log('✅ Login successful - tokens stored')
     }
     
     return response.data
@@ -38,46 +42,70 @@ class AuthService {
 
   async logout(): Promise<void> {
     try {
-      await axios.post(`${this.baseURL}/logout`, undefined, { withCredentials: true })
+      await axios.post(`${this.baseURL}/logout`, undefined, { 
+        withCredentials: true,
+        headers: {
+          'Authorization': `Bearer ${this.getStoredToken()}`
+        }
+      })
     } finally {
+      // Clear everything
       this.clearAuthToken()
-      localStorage.removeItem('accessToken')
-      localStorage.removeItem('refreshToken')
-      localStorage.removeItem('user')
-      sessionStorage.removeItem('accessToken')
-      sessionStorage.removeItem('refreshToken')
-      sessionStorage.removeItem('user')
+      this.clearStorage()
+      console.log('✅ Logout successful - tokens cleared')
     }
+  }
+
+  private clearStorage(): void {
+    // Clear from both storages
+    localStorage.removeItem('accessToken')
+    localStorage.removeItem('refreshToken')
+    localStorage.removeItem('user')
+    sessionStorage.removeItem('accessToken')
+    sessionStorage.removeItem('refreshToken')
+    sessionStorage.removeItem('user')
   }
 
   async refreshToken(refreshToken: string): Promise<RefreshTokenResponse> {
     const response: AxiosResponse<RefreshTokenResponse> = await axios.post(
       `${this.baseURL}/refresh`,
       { refreshToken },
-      { withCredentials: true }
+      { 
+        withCredentials: true,
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      }
     )
     
     if (response.data.success) {
-      this.setAuthToken(response.data.accessToken)
-      // Update persisted tokens
-      if (localStorage.getItem('refreshToken')) {
-        localStorage.setItem('accessToken', response.data.accessToken)
-        localStorage.setItem('refreshToken', response.data.refreshToken)
-        localStorage.setItem('user', JSON.stringify(response.data.user))
-      } else {
-        sessionStorage.setItem('accessToken', response.data.accessToken)
-        sessionStorage.setItem('refreshToken', response.data.refreshToken)
-        sessionStorage.setItem('user', JSON.stringify(response.data.user))
-      }
+      const { accessToken, refreshToken: newRefreshToken, user } = response.data
+      
+      // Update token in axios headers
+      this.setAuthToken(accessToken)
+      
+      // Update persisted tokens in the same storage that was used
+      const storage = localStorage.getItem('refreshToken') ? localStorage : sessionStorage
+      storage.setItem('accessToken', accessToken)
+      storage.setItem('refreshToken', newRefreshToken)
+      storage.setItem('user', JSON.stringify(user))
+      
+      console.log('✅ Token refreshed successfully')
     }
     
     return response.data
   }
 
   async getCurrentUser(): Promise<User> {
+    const token = this.getStoredToken()
     const response: AxiosResponse<{ success: boolean; data: User }> = await axios.get(
       `${this.baseURL}/users/me`,
-      { withCredentials: true }
+      { 
+        withCredentials: true,
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      }
     )
     
     return response.data.data
@@ -101,11 +129,6 @@ class AuthService {
 
   async validateToken(): Promise<boolean> {
     try {
-      // Use mock service in development
-      if (import.meta.env.DEV) {
-        return await mockAuthService.validateToken()
-      }
-
       await axios.post(`${this.baseURL}/validate`)
       return true
     } catch {
@@ -114,32 +137,73 @@ class AuthService {
   }
 
   setAuthToken(token: string): void {
-    axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
+    if (token) {
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
+      console.log('🔑 Auth token set in axios headers')
+    }
   }
 
   clearAuthToken(): void {
     delete axios.defaults.headers.common['Authorization']
+    console.log('🔓 Auth token cleared from axios headers')
   }
 
   getStoredToken(): string | null {
     // Read from persisted storage
     return localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken')
   }
+
+  initializeAuth(): void {
+    // Initialize auth token from storage on app start
+    const token = this.getStoredToken()
+    if (token) {
+      this.setAuthToken(token)
+      console.log('🔄 Auth token restored from storage')
+    }
+  }
 }
 
 export const authService = new AuthService()
 
+// Initialize auth on service creation
+authService.initializeAuth()
+
 // Axios interceptors for token management
 axios.interceptors.request.use(
   (config) => {
+    // Ensure token is always in headers
+    const token = authService.getStoredToken()
+    if (token && !config.headers['Authorization']) {
+      config.headers['Authorization'] = `Bearer ${token}`
+    }
+    
     // Add correlation ID for request tracking
     config.headers['x-correlation-id'] = crypto.randomUUID()
+    
+    // Ensure credentials are sent
+    config.withCredentials = true
+    
     return config
   },
   (error) => {
     return Promise.reject(error)
   }
 )
+
+// Response interceptor for handling token expiration
+let isRefreshing = false
+let failedQueue: any[] = []
+
+const processQueue = (error: any, token: string | null = null) => {
+  failedQueue.forEach(prom => {
+    if (error) {
+      prom.reject(error)
+    } else {
+      prom.resolve(token)
+    }
+  })
+  failedQueue = []
+}
 
 axios.interceptors.response.use(
   (response) => {
@@ -150,12 +214,52 @@ axios.interceptors.response.use(
 
     // Handle 401 errors (token expired)
     if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true
+      if (isRefreshing) {
+        // Queue the request while token is being refreshed
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject })
+        }).then(token => {
+          originalRequest.headers['Authorization'] = `Bearer ${token}`
+          return axios(originalRequest)
+        }).catch(err => {
+          return Promise.reject(err)
+        })
+      }
 
-      // Dispatch refresh token action
-      // This would be handled by the auth slice
-      const event = new CustomEvent('auth:token-expired')
-      window.dispatchEvent(event)
+      originalRequest._retry = true
+      isRefreshing = true
+
+      const refreshToken = localStorage.getItem('refreshToken') || sessionStorage.getItem('refreshToken')
+      
+      if (!refreshToken) {
+        // No refresh token, logout
+        isRefreshing = false
+        const event = new CustomEvent('auth:logout-required')
+        window.dispatchEvent(event)
+        return Promise.reject(error)
+      }
+
+      try {
+        const response = await authService.refreshToken(refreshToken)
+        const { accessToken } = response
+        
+        authService.setAuthToken(accessToken)
+        originalRequest.headers['Authorization'] = `Bearer ${accessToken}`
+        
+        processQueue(null, accessToken)
+        isRefreshing = false
+        
+        return axios(originalRequest)
+      } catch (refreshError) {
+        processQueue(refreshError, null)
+        isRefreshing = false
+        
+        // Refresh failed, logout
+        const event = new CustomEvent('auth:logout-required')
+        window.dispatchEvent(event)
+        
+        return Promise.reject(refreshError)
+      }
     }
 
     return Promise.reject(error)

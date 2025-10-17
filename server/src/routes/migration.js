@@ -1,7 +1,7 @@
 const express = require('express');
 const { getDICOMMigrationService } = require('../services/dicom-migration-service');
 const { getMigrationValidationService } = require('../services/migration-validation-service');
-const requireAuth = require('../middleware/authMiddleware');
+const { authenticate: requireAuth } = require('../middleware/authMiddleware');
 const Instance = require('../models/Instance');
 
 const router = express.Router();

@@ -1,4 +1,5 @@
 const express = require('express');
+const { auditMiddleware, auditAction, auditLogger } = require('../middleware/auditMiddleware');
 const { getRoot } = require('../controllers/healthController');
 const { getStudies, getStudy, getStudyMetadata } = require('../controllers/studyController');
 const { getFrame } = require('../controllers/instanceController');
@@ -7,6 +8,7 @@ const { getDICOMMigrationService } = require('../services/dicom-migration-servic
 const { uploadMiddleware, handleUpload } = require('../controllers/uploadController');
 const { uploadZipStudy, getZipUploadInfo, testZipUpload, uploadMiddleware: zipUploadMiddleware } = require('../controllers/zipUploadController');
 const { getPatients, getPatientStudies, createPatient } = require('../controllers/patientController');
+const { authenticate } = require('../middleware/authMiddleware');
 const authRoutes = require('./auth');
 const secretsRoutes = require('./secrets');
 const anonymizationRoutes = require('./anonymization');
@@ -22,34 +24,47 @@ const structuredReportsRoutes = require('./structured-reports');
 const signatureRoutes = require('./signature');
 const medicalAIRoutes = require('./medical-ai');
 const systemMonitoringRoutes = require('./system-monitoring');
+const usersRoutes = require('./users');
+const superAdminRoutes = require('./superadmin');
+const publicRoutes = require('./public');
 
 const router = express.Router();
 
-// Health
+// Apply audit middleware to all routes
+router.use(auditMiddleware({
+  excludePaths: ['/health', '/metrics'],
+  logBody: true
+}));
+
+// Health (Public - no auth required)
 router.get('/', getRoot);
 
-// PACS Upload Interface (TODO: Add authentication before production - currently open for testing)
-router.get('/pacs-upload', (req, res) => {
+// PACS Upload Interface (Protected - requires authentication)
+router.get('/pacs-upload', authenticate, (req, res) => {
   res.sendFile('pacs-upload.html', { root: './public' });
 });
 
-// Orthanc Viewer Interface
-router.get('/viewer', (req, res) => {
+// Orthanc Viewer Interface (Protected - requires authentication)
+router.get('/viewer', authenticate, (req, res) => {
   res.sendFile('orthanc-viewer.html', { root: './public' });
 });
 
-// Patients (TODO: Add authentication before production - currently open for testing)
-router.get('/api/patients', getPatients);
-router.get('/api/patients/:patientID/studies', getPatientStudies);
-router.post('/api/patients', express.json(), createPatient);
+// Patients (Protected - requires authentication)
+router.get('/api/patients', authenticate, getPatients);
+router.get('/api/patients/:patientID/studies', authenticate, getPatientStudies);
+router.post('/api/patients', authenticate, express.json(), createPatient);
 
-// DICOM Studies (TODO: Add authentication before production - currently open for testing)
-router.get('/api/dicom/studies', getStudies);
-router.get('/api/dicom/studies/:studyUid', getStudy);
-router.get('/api/dicom/studies/:studyUid/metadata', getStudyMetadata);
+// DICOM Studies (Protected - requires authentication)
+router.get('/api/dicom/studies',authenticate,  getStudies);
+router.get('/api/dicom/studies/:studyUid', 
+   
+  auditAction('study.view', (req) => ({ studyInstanceUID: req.params.studyUid })),
+  getStudy
+);
+router.get('/api/dicom/studies/:studyUid/metadata',  getStudyMetadata);
 
-// Frames - with migration support (TODO: Add authentication before production - currently open for testing)
-router.get('/api/dicom/studies/:studyUid/frames/:frameIndex', async (req, res) => {
+// Frames - with migration support (Protected - requires authentication)
+router.get('/api/dicom/studies/:studyUid/frames/:frameIndex',  async (req, res) => {
   const migrationService = getDICOMMigrationService({
     enableOrthancPreview: process.env.ENABLE_ORTHANC_PREVIEW !== 'false',
     migrationPercentage: parseInt(process.env.ORTHANC_MIGRATION_PERCENTAGE) || 100
@@ -58,17 +73,25 @@ router.get('/api/dicom/studies/:studyUid/frames/:frameIndex', async (req, res) =
   return await migrationService.getFrameWithMigration(req, res, getFrame);
 });
 
-// Orthanc-specific endpoints (TODO: Add authentication before production - currently open for testing)
-router.get('/api/dicom/instances/:instanceId/metadata', getInstanceMetadata);
-router.get('/api/dicom/orthanc/health', checkOrthancHealth);
+// Orthanc-specific endpoints (Protected - requires authentication)
+router.get('/api/dicom/instances/:instanceId/metadata', authenticate, getInstanceMetadata);
+router.get('/api/dicom/orthanc/health', authenticate, checkOrthancHealth);
 
-// Upload (TODO: Add authentication before production - currently open for testing)
-router.post('/api/dicom/upload', uploadMiddleware(), handleUpload);
+// Upload (Protected - requires authentication)
+router.post('/api/dicom/upload', 
+  authenticate, 
+  uploadMiddleware(), 
+  auditAction('dicom.upload', (req, res, data) => ({ 
+    studyInstanceUID: data.data?.studyInstanceUID,
+    fileSize: req.file?.size 
+  })),
+  handleUpload
+);
 
-// ZIP Upload - Upload entire ZIP as single DICOM study (TODO: Add authentication before production)
-router.post('/api/dicom/upload/zip', zipUploadMiddleware().single('file'), uploadZipStudy);
-router.get('/api/dicom/upload/zip/info', getZipUploadInfo);
-router.post('/api/dicom/upload/zip/test', zipUploadMiddleware().single('file'), testZipUpload);
+// ZIP Upload - Upload entire ZIP as single DICOM study (Protected - requires authentication)
+router.post('/api/dicom/upload/zip', authenticate, zipUploadMiddleware().single('file'), uploadZipStudy);
+router.get('/api/dicom/upload/zip/info', authenticate, getZipUploadInfo);
+router.post('/api/dicom/upload/zip/test', authenticate, zipUploadMiddleware().single('file'), testZipUpload);
 
 // Auth
 router.use('/auth', authRoutes);
@@ -94,30 +117,31 @@ router.use('/health', healthRoutes);
 // Alerts
 router.use('/alerts', alertsRoutes);
 
-// Migration
-router.use('/api/migration', migrationRoutes);
+// Migration (Protected - requires authentication)
+router.use('/api/migration', authenticate, migrationRoutes);
 
-// PACS Integration (TODO: Add authentication before production - currently open for testing)
-router.use('/api/pacs', pacsRoutes);
+// PACS Integration (Protected - requires authentication)
+router.use('/api/pacs', authenticate, pacsRoutes);
 
 // Orthanc Webhook (Auto-sync when files uploaded to Orthanc)
+// Note: Webhooks use webhook security middleware, not JWT auth
 const orthancWebhookRoutes = require('./orthanc-webhook');
 router.use('/api', orthancWebhookRoutes);
 
-// Orthanc Viewer API - Direct access to Orthanc for UI display
+// Orthanc Viewer API - Direct access to Orthanc for UI display (Protected - requires authentication)
 const orthancViewController = require('../controllers/orthancViewController');
-router.get('/api/viewer/orthanc/studies', orthancViewController.getAllStudies);
-router.get('/api/viewer/orthanc/studies/search', orthancViewController.searchStudies);
-router.get('/api/viewer/orthanc/studies/:studyId', orthancViewController.getStudy);
-router.get('/api/viewer/orthanc/series/:seriesId', orthancViewController.getSeries);
-router.get('/api/viewer/orthanc/stats', orthancViewController.getStats);
+router.get('/api/viewer/orthanc/studies', authenticate, orthancViewController.getAllStudies);
+router.get('/api/viewer/orthanc/studies/search', authenticate, orthancViewController.searchStudies);
+router.get('/api/viewer/orthanc/studies/:studyId', authenticate, orthancViewController.getStudy);
+router.get('/api/viewer/orthanc/series/:seriesId', authenticate, orthancViewController.getSeries);
+router.get('/api/viewer/orthanc/stats', authenticate, orthancViewController.getStats);
 
-// Unified Viewer API - Shows both Orthanc + Database data
+// Unified Viewer API - Shows both Orthanc + Database data (Protected - requires authentication)
 const unifiedViewController = require('../controllers/unifiedViewController');
-router.get('/api/viewer/studies', unifiedViewController.getAllStudies);
-router.get('/api/viewer/studies/search', unifiedViewController.searchStudies);
-router.get('/api/viewer/studies/:studyId', unifiedViewController.getStudy);
-router.get('/api/viewer/stats', unifiedViewController.getStats);
+router.get('/api/viewer/studies', authenticate, unifiedViewController.getAllStudies);
+router.get('/api/viewer/studies/search', authenticate, unifiedViewController.searchStudies);
+router.get('/api/viewer/studies/:studyId', authenticate, unifiedViewController.getStudy);
+router.get('/api/viewer/stats', authenticate, unifiedViewController.getStats);
 
 // Viewer Selection Sync API - Selection synchronization for measurements and annotations
 router.use('/api/viewer', viewerSelectionRoutes);
@@ -133,5 +157,14 @@ router.use('/api/medical-ai', medicalAIRoutes);
 
 // System Monitoring API - Machine statistics and system health
 router.use('/api/monitoring', systemMonitoringRoutes);
+
+// User Management API - CRUD operations for users
+router.use('/api/users', usersRoutes);
+
+// Super Admin API - Dashboard, analytics, and contact requests
+router.use('/api/superadmin', superAdminRoutes);
+
+// Public API - No authentication required
+router.use('/api/public', publicRoutes);
 
 module.exports = router;

@@ -1,8 +1,8 @@
-import type { 
-  User, 
-  LoginCredentials, 
-  LoginResponse, 
-  RefreshTokenResponse 
+import type {
+  User,
+  LoginCredentials,
+  LoginResponse,
+  RefreshTokenResponse
 } from '../types/auth'
 
 // Mock users for development/testing
@@ -91,7 +91,7 @@ class MockAuthService {
     await new Promise(resolve => setTimeout(resolve, 800))
 
     const { username, password } = credentials
-    
+
     // Check credentials
     if (!mockCredentials[username] || mockCredentials[username] !== password) {
       throw new Error('Invalid username or password')
@@ -114,7 +114,7 @@ class MockAuthService {
       roles: user.roles,
       exp: Math.floor(Date.now() / 1000) + (60 * 60) // 1 hour expiry
     }
-    
+
     this.accessToken = `mock.${btoa(JSON.stringify(tokenPayload))}.signature`
     this.refreshTokenValue = `mock-refresh-token-${Date.now()}`
     this.currentUser = { ...user }
@@ -135,7 +135,7 @@ class MockAuthService {
   async logout(): Promise<void> {
     // Simulate network delay
     await new Promise(resolve => setTimeout(resolve, 200))
-    
+
     this.currentUser = null
     this.accessToken = null
     this.refreshTokenValue = null
@@ -210,7 +210,7 @@ class MockAuthService {
   async validateToken(): Promise<boolean> {
     // Simulate network delay
     await new Promise(resolve => setTimeout(resolve, 100))
-    
+
     return this.accessToken !== null && this.currentUser !== null
   }
 

@@ -174,6 +174,9 @@ async function handleUpload(req, res) {
 
     // ---------------- MongoDB UPSERTS (consistent UIDs) ----------------
 
+    // Get hospitalId from authenticated user
+    const hospitalId = req.user?.hospitalId || null;
+
     // Study
     await Study.updateOne(
       { studyInstanceUID },
@@ -190,7 +193,8 @@ async function handleUpload(req, res) {
           studyDescription,
           numberOfSeries: 1,
           numberOfInstances: frameCount,
-          orthancStudyId
+          orthancStudyId,
+          hospitalId
         }
       },
       { upsert: true }
@@ -266,6 +270,11 @@ async function handleUpload(req, res) {
         if (overridePatientName && overridePatientName.trim()) {
           update.$set = { patientName: overridePatientName.trim() };
         }
+        // Add hospitalId if not set
+        if (!existing.hospitalId && hospitalId) {
+          if (!update.$set) update.$set = {};
+          update.$set.hospitalId = hospitalId;
+        }
         await Patient.updateOne({ patientID }, update, { upsert: true });
       } else {
         await Patient.updateOne(
@@ -274,7 +283,8 @@ async function handleUpload(req, res) {
             $set: {
               patientID,
               patientName,
-              orthancPatientId
+              orthancPatientId,
+              hospitalId
             },
             $addToSet: { studyIds: studyInstanceUID }
           },

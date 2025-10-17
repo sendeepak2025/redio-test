@@ -54,6 +54,8 @@ async function countFramesFromOrthanc(inst) {
 
 async function getStudies(req, res) {
   try {
+    console.log(req.user,"USER")
+
     const mongoose = require('mongoose');
     const { getFilesystemStudyLoader } = require('../services/filesystem-study-loader');
     
@@ -72,6 +74,35 @@ async function getStudies(req, res) {
       });
     }
     
+    // Build query based on user's hospital
+    const query = {};
+    
+    // Check if user is authenticated
+    if (!req.user) {
+      console.warn('⚠️  No user in request - authentication may have failed');
+      return res.status(401).json({
+        success: false,
+        message: 'Authentication required'
+      });
+    }
+    
+    // Check if user is super admin
+    const isSuperAdmin = req.user.roles && (
+      req.user.roles.includes('system:admin') || 
+      req.user.roles.includes('super_admin')
+    );
+    console.log(req.user,"USER")
+    
+    // Filter by hospital for non-super-admin users
+    if (!isSuperAdmin && req.user.hospitalId) {
+      query.hospitalId = req.user.hospitalId;
+      console.log(`🔒 Filtering studies by hospitalId: ${req.user.hospitalId} for user: ${req.user.username}`);
+    } else if (!isSuperAdmin && !req.user.hospitalId) {
+      console.warn(`⚠️  User ${req.user.username} has no hospitalId - showing all studies`);
+    } else {
+      console.log(`👑 Super admin ${req.user.username} - showing all studies`);
+    }
+    
     // Check if PACS integration is enabled
     const enablePacsIntegration = process.env.ENABLE_PACS_INTEGRATION !== 'false';
     
@@ -79,19 +110,25 @@ async function getStudies(req, res) {
       // Use unified studies from both database and PACS
       console.log('Fetching unified studies from database and PACS...');
       const orthancStudyService = getOrthancStudyService();
-      const unifiedStudies = await orthancStudyService.getUnifiedStudies();
+      let unifiedStudies = await orthancStudyService.getUnifiedStudies();
+      
+      // Filter by hospital if needed
+      if (query.hospitalId) {
+        unifiedStudies = unifiedStudies.filter(s => s.hospitalId === query.hospitalId);
+      }
       
       res.json({ success: true, data: unifiedStudies });
     } else {
       // Fallback to database-only with improved frame counting
       console.log('PACS integration disabled, using database only...');
       
-      const dbStudies = await Study.find({}, {
+      const dbStudies = await Study.find(query, {
         studyInstanceUID: 1,
         patientName: 1,
         modality: 1,
         numberOfSeries: 1,
-        numberOfInstances: 1
+        numberOfInstances: 1,
+        hospitalId: 1
       }).lean();
 
       // Get accurate frame counts for each study (same logic as getStudy)
@@ -116,7 +153,8 @@ async function getStudies(req, res) {
             patientName: study.patientName || 'Unknown',
             modality: study.modality || 'OT',
             numberOfSeries: study.numberOfSeries || 1,
-            numberOfInstances: numberOfInstances
+            numberOfInstances: numberOfInstances,
+            hospitalId: study.hospitalId
           };
         })
       );
@@ -149,12 +187,25 @@ async function getStudy(req, res) {
   try {
     const { studyUid } = req.params;
     
+    // Check authentication
+    // if (!req.user) {
+    //   return res.status(401).json({
+    //     success: false,
+    //     message: 'Authentication required'
+    //   });
+    // }
+    
+    // // Check if user is super admin
+    // const isSuperAdmin = req.user.roles && (
+    //   req.user.roles.includes('system:admin') || 
+    //   req.user.roles.includes('super_admin')
+    // );
+    
     // First try to find in database
     let study = await Study.findOne({ studyInstanceUID: studyUid }).lean();
     
     // If not found in database and PACS integration is enabled, try PACS
     if (!study && process.env.ENABLE_PACS_INTEGRATION !== 'false') {
-      console.log("ENTER")
       console.log(`Study ${studyUid} not found in database, checking PACS...`);
       const orthancStudyService = getOrthancStudyService();
       const pacsStudy = await orthancStudyService.getStudyFromPacs(studyUid);
@@ -168,6 +219,15 @@ async function getStudy(req, res) {
     if (!study) {
       return res.status(404).json({ success: false, message: 'Study not found' });
     }
+    
+    // Check hospital access - non-super-admin users can only access their hospital's studies
+    // if (!isSuperAdmin && req.user.hospitalId && study.hospitalId !== req.user.hospitalId) {
+    //   console.warn(`🚫 Access denied: User ${req.user.username} (${req.user.hospitalId}) tried to access study from ${study.hospitalId}`);
+    //   return res.status(403).json({ 
+    //     success: false, 
+    //     message: 'Access denied - you can only view studies from your hospital' 
+    //   });
+    // }
 
     // Get accurate frame count
     let numberOfInstances = study.numberOfInstances || 1;
@@ -188,8 +248,31 @@ async function getStudy(req, res) {
 async function getStudyMetadata(req, res) {
   try {
     const { studyUid } = req.params;
+    
+    // Check authentication
+    // if (!req.user) {
+    //   return res.status(401).json({
+    //     success: false,
+    //     message: 'Authentication required'
+    //   });
+    // }
+    
     let study = await Study.findOne({ studyInstanceUID: studyUid }).lean();
     if (!study) return res.status(404).json({ success: false, message: 'Study not found' });
+    
+    // Check hospital access
+    // const isSuperAdmin = req.user.roles && (
+    //   req.user.roles.includes('system:admin') || 
+    //   req.user.roles.includes('super_admin')
+    // );
+    
+    // if (!isSuperAdmin && req.user.hospitalId && study.hospitalId !== req.user.hospitalId) {
+    //   console.warn(`🚫 Access denied: User ${req.user.username} tried to access metadata for study from different hospital`);
+    //   return res.status(403).json({ 
+    //     success: false, 
+    //     message: 'Access denied - you can only view studies from your hospital' 
+    //   });
+    // }
 
     const inst = await Instance.findOne({ studyInstanceUID: studyUid }).lean();
     let totalFrames = study.numberOfInstances || 1;

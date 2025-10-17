@@ -1,4 +1,5 @@
 const axios = require('axios');
+const { getEmailService } = require('./email-service');
 
 /**
  * NotificationService - Handles alert notifications to various channels
@@ -18,6 +19,7 @@ class NotificationService {
 
     this.alertHistory = [];
     this.maxHistorySize = 1000;
+    this.emailService = getEmailService(config);
   }
 
   /**
@@ -45,8 +47,8 @@ class NotificationService {
     }
 
     // Send email if configured
-    if (this.config.emailSmtpHost) {
-      promises.push(this.sendEmailNotification(alert));
+    if (this.emailService && this.emailService.transporter) {
+      promises.push(this.emailService.sendAlert(alert));
     }
 
     // Wait for all notifications to complete

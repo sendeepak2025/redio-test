@@ -60,6 +60,7 @@ import {
   SmartToy as SmartToyIcon,
   Refresh as RefreshIcon
 } from '@mui/icons-material'
+import { getAuthToken } from '@/services/ApiService'
 
 interface Measurement {
   id: string
@@ -93,6 +94,28 @@ interface ReportTemplate {
     suggestions: string[]
   }[]
 }
+
+
+
+// ---- AXIOS CLIENT (adds token to every request) ----
+const backendUrl =
+  (import.meta.env as any)?.VITE_BACKEND_URL 
+  'http://localhost:8001'
+
+const axiosClient = axios.create({
+  baseURL: backendUrl,
+  withCredentials: true,
+})
+
+axiosClient.interceptors.request.use((config) => {
+  const token = getAuthToken()
+  console.log(token,"TOKEN")
+  if (token) {
+    config.headers = config.headers || {}
+    ;(config.headers as any).Authorization = `Bearer ${token}`
+  }
+  return config
+})
 
 interface StructuredReportingProps {
   studyData: any
@@ -139,6 +162,9 @@ const StructuredReporting: React.FC<StructuredReportingProps> = ({
   const [reportValidation, setReportValidation] = useState<{[key: string]: boolean}>({})
   const [exportProgress, setExportProgress] = useState(0)
   const [showExportDialog, setShowExportDialog] = useState(false)
+
+
+const token = getAuthToken()
 
   // Standard Templates for different modalities
   const standardTemplates: ReportTemplate[] = [
@@ -328,7 +354,6 @@ const StructuredReporting: React.FC<StructuredReportingProps> = ({
       ]
     }
   ]
-
   // Initialize with templates and auto-select appropriate one
   useEffect(() => {
     const initializeReporting = async () => {
@@ -341,7 +366,7 @@ const StructuredReporting: React.FC<StructuredReportingProps> = ({
         
         try {
           const backendUrl = import.meta.env.VITE_BACKEND_URL || process.env.REACT_APP_BACKEND_URL || 'http://localhost:8001'
-          const response = await axios.get(`${backendUrl}/api/reports/templates?active=true`)
+          const response = await axiosClient.get(`${backendUrl}/api/reports/templates?active=true`)
           
           if (response.data?.success && response.data.templates?.length > 0) {
             templatesToUse = response.data.templates
@@ -390,7 +415,7 @@ const StructuredReporting: React.FC<StructuredReportingProps> = ({
       
       try {
         const backendUrl = import.meta.env.VITE_BACKEND_URL || process.env.REACT_APP_BACKEND_URL || 'http://localhost:8001'
-        const response = await axios.get(`${backendUrl}/api/reports/study/${studyData.studyInstanceUID}`)
+        const response = await axiosClient.get(`${backendUrl}/api/reports/study/${studyData.studyInstanceUID}`)
         
         if (response.data.success) {
           setReportHistory(response.data.reports || [])
@@ -459,7 +484,7 @@ const StructuredReporting: React.FC<StructuredReportingProps> = ({
       }
 
       const backendUrl = import.meta.env.VITE_BACKEND_URL || process.env.REACT_APP_BACKEND_URL || 'http://localhost:8001'
-      await axios.post(`${backendUrl}/api/reports`, reportData)
+      await axiosClient.post(`${backendUrl}/api/reports`, reportData)
       
       setSaveStatus('saved')
       setTimeout(() => setSaveStatus(null), 3000)
@@ -528,7 +553,7 @@ const StructuredReporting: React.FC<StructuredReportingProps> = ({
           findings: findings
         }
         
-        const response = await axios.post(`${backendUrl}/api/reports/ai-generate`, requestData, {
+        const response = await axiosClient.post(`${backendUrl}/api/reports/ai-generate`, requestData, {
           timeout: 10000 // 10 second timeout
         })
         

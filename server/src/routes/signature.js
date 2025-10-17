@@ -1,39 +1,28 @@
 const express = require('express');
 const router = express.Router();
 const signatureController = require('../controllers/signatureController');
+const { authenticate } = require('../middleware/authMiddleware');
 
 /**
  * Signature Upload API Routes
- * TODO: Add authentication before production - currently open for testing
+ * All routes require authentication
  */
-
-// Dummy authentication middleware for testing
-const dummyAuthMiddleware = (req, res, next) => {
-  req.user = {
-    id: 'test-user-123',
-    _id: 'test-user-123',
-    firstName: 'Test',
-    lastName: 'Radiologist',
-    email: 'test@example.com',
-    username: 'test.radiologist'
-  };
-  next();
-};
 
 // Upload signature to filesystem
 router.post('/upload', 
-  dummyAuthMiddleware,
+  authenticate,
   signatureController.uploadSignature
 );
 
-// Get signature file
+// Get signature file (requires authentication to prevent unauthorized access)
 router.get('/file/:filename', 
+  authenticate,
   signatureController.getSignature
 );
 
 // Delete signature
 router.delete('/:filename', 
-  dummyAuthMiddleware,
+  authenticate,
   signatureController.deleteSignature
 );
 

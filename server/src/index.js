@@ -6,7 +6,7 @@ const { connectMongo } = require('./config/mongo');
 const routes = require('./routes');
 const cookieParser = require('cookie-parser');
 const { getSecretManager, getApplicationSecrets } = require('./services/secret-manager');
-const { logRequest, logAuthentication, logDicomOperation, logUnauthorizedAccess } = require('./middleware/auditMiddleware');
+const { auditMiddleware } = require('./middleware/auditMiddleware');
 const { ensureLogsDirectory } = require('./utils/ensure-logs-dir');
 const AnonymizationService = require('./services/anonymization-service');
 const anonymizationConfig = require('./config/anonymization');
@@ -22,10 +22,10 @@ app.use(morgan('dev'));
 app.use(cookieParser());
 
 // Audit middleware - must be early in the middleware chain
-app.use(logRequest());
-app.use(logAuthentication());
-app.use(logDicomOperation());
-app.use(logUnauthorizedAccess());
+app.use(auditMiddleware({
+  excludePaths: ['/health', '/metrics'],
+  logBody: true
+}));
 
 // Admin action logging middleware (will be initialized after services are set up)
 app.use((req, res, next) => {
@@ -122,9 +122,15 @@ async function startServer() {
     // Cloudinary removed - using filesystem + Orthanc storage
     console.log('Database configured');
 
-    // TODO: Enable for production - Create default admin user
-    // const { seedAdmin } = require('./seed/seedAdmin');
-    // await seedAdmin();
+    // Create default admin user if it doesn't exist
+    try {
+      const { seedAdmin } = require('./seed/seedAdmin');
+      await seedAdmin();
+      console.log('✅ Admin user initialization complete');
+    } catch (error) {
+      console.warn('⚠️  Admin user seeding failed:', error.message);
+      console.warn('   You may need to create an admin user manually');
+    }
 
     // Check Orthanc PACS connection if PACS integration is enabled
     if (process.env.ENABLE_PACS_INTEGRATION !== 'false') {

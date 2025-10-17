@@ -8,6 +8,10 @@ const UserSchema = new mongoose.Schema({
   lastName: { type: String, required: true },
   roles: { type: [String], default: ['user'] },
   permissions: { type: [String], default: ['studies:read'] },
+  hospitalId: { 
+    type: String, 
+    index: true 
+  }, // Hospital ID as string (e.g., "HOSP001") for multi-tenancy
   isActive: { type: Boolean, default: true },
   isVerified: { type: Boolean, default: true },
   mfaEnabled: { type: Boolean, default: false },
@@ -23,6 +27,8 @@ UserSchema.methods.toPublicJSON = function () {
     lastName: this.lastName,
     roles: this.roles,
     permissions: this.permissions,
+    // Convert ObjectId to string
+    hospitalId: this.hospitalId ? this.hospitalId.toString() : undefined,
     isActive: this.isActive,
     isVerified: this.isVerified,
     mfaEnabled: this.mfaEnabled,
@@ -30,6 +36,23 @@ UserSchema.methods.toPublicJSON = function () {
     createdAt: this.createdAt.toISOString(),
     updatedAt: this.updatedAt.toISOString(),
   }
+}
+
+// Helper method to get primary role for routing
+UserSchema.methods.getPrimaryRole = function () {
+  if (this.roles.includes('system:admin') || this.roles.includes('super_admin')) {
+    return 'superadmin'
+  }
+  if (this.roles.includes('admin')) {
+    return 'admin'
+  }
+  if (this.roles.includes('radiologist')) {
+    return 'radiologist'
+  }
+  if (this.roles.includes('staff')) {
+    return 'staff'
+  }
+  return 'user'
 }
 
 module.exports = mongoose.model('User', UserSchema)

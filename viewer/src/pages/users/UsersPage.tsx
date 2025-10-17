@@ -52,62 +52,34 @@ export const UsersPage: React.FC = () => {
   const [openDialog, setOpenDialog] = useState(false)
   const [editingUser, setEditingUser] = useState<User | null>(null)
 
-  // Mock data - replace with API call
+  // Load users from API
   useEffect(() => {
-    const mockUsers: User[] = [
-      {
-        id: '1',
-        username: 'dr.smith',
-        email: 'john.smith@hospital.com',
-        firstName: 'John',
-        lastName: 'Smith',
-        roles: ['radiologist', 'provider'],
-        isActive: true,
-        lastLogin: '2024-10-16T10:30:00Z'
-      },
-      {
-        id: '2',
-        username: 'dr.johnson',
-        email: 'sarah.johnson@hospital.com',
-        firstName: 'Sarah',
-        lastName: 'Johnson',
-        roles: ['radiologist', 'provider'],
-        isActive: true,
-        lastLogin: '2024-10-16T09:15:00Z'
-      },
-      {
-        id: '3',
-        username: 'tech.mike',
-        email: 'mike.brown@hospital.com',
-        firstName: 'Mike',
-        lastName: 'Brown',
-        roles: ['technician'],
-        isActive: true,
-        lastLogin: '2024-10-16T08:00:00Z'
-      },
-      {
-        id: '4',
-        username: 'nurse.emily',
-        email: 'emily.davis@hospital.com',
-        firstName: 'Emily',
-        lastName: 'Davis',
-        roles: ['staff', 'nurse'],
-        isActive: true,
-        lastLogin: '2024-10-15T16:45:00Z'
-      },
-      {
-        id: '5',
-        username: 'admin.robert',
-        email: 'robert.wilson@hospital.com',
-        firstName: 'Robert',
-        lastName: 'Wilson',
-        roles: ['admin'],
-        isActive: true,
-        lastLogin: '2024-10-16T07:30:00Z'
-      },
-    ]
-    setUsers(mockUsers)
-    setFilteredUsers(mockUsers)
+    const loadUsers = async () => {
+      try {
+        const response = await fetch('/api/users', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        })
+        
+        if (!response.ok) {
+          throw new Error('Failed to load users')
+        }
+        
+        const result = await response.json()
+        if (result.success) {
+          setUsers(result.data)
+          setFilteredUsers(result.data)
+        }
+      } catch (error) {
+        console.error('Error loading users:', error)
+        // Fallback to empty array on error
+        setUsers([])
+        setFilteredUsers([])
+      }
+    }
+    
+    loadUsers()
   }, [])
 
   useEffect(() => {
@@ -162,9 +134,51 @@ export const UsersPage: React.FC = () => {
     setEditingUser(null)
   }
 
-  const handleSaveUser = () => {
-    // Implement save logic
-    handleCloseDialog()
+  const handleSaveUser = async () => {
+    try {
+      const userData = {
+        username: editingUser?.username || '',
+        email: editingUser?.email || '',
+        firstName: editingUser?.firstName || '',
+        lastName: editingUser?.lastName || '',
+        roles: editingUser?.roles || [],
+        password: editingUser ? undefined : 'changeme123' // Default password for new users
+      }
+      
+      const url = editingUser ? `/api/users/${editingUser.id}` : '/api/users'
+      const method = editingUser ? 'PUT' : 'POST'
+      
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify(userData)
+      })
+      
+      if (!response.ok) {
+        throw new Error('Failed to save user')
+      }
+      
+      // Reload users
+      const usersResponse = await fetch('/api/users', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      })
+      
+      const result = await usersResponse.json()
+      if (result.success) {
+        setUsers(result.data)
+        setFilteredUsers(result.data)
+      }
+      
+      handleCloseDialog()
+    } catch (error) {
+      console.error('Error saving user:', error)
+      alert('Failed to save user')
+    }
   }
 
   return (

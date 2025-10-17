@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react'
-import { Box, Alert, Typography, Button, Paper, Grid, Chip, Tabs, Tab, ToggleButton, ToggleButtonGroup } from '@mui/material'
+import { Box, Alert, Typography, Button, Paper, Grid, Chip, Tabs, Tab, ToggleButtonGroup, ToggleButton } from '@mui/material'
 import { Helmet } from 'react-helmet-async'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import { MedicalImageViewer } from '../../components/viewer/MedicalImageViewer'
 import Cornerstone3DViewer from '../../components/viewer/Cornerstone3DViewer'
+import { VolumeViewer3D } from '../../components/viewer/VolumeViewer3D'
 import { ReportingInterface } from '../../components/reporting/ReportingInterface'
 import { PatientContextPanel } from '../../components/worklist/PatientContextPanel'
 import AIAnalysisPanel from '../../components/ai/AIAnalysisPanel'
@@ -61,7 +62,7 @@ const ViewerPage: React.FC = () => {
   })
   const [patientContext, setPatientContext] = useState<any>(null)
   const [activeTab, setActiveTab] = useState(0)
-  const [viewerType, setViewerType] = useState<'legacy' | 'cornerstone3d'>('legacy')
+  const [viewerType, setViewerType] = useState<'legacy' | 'cornerstone3d' | '3d'>('legacy')
 
   // Load study data from DICOM API
   useEffect(() => {
@@ -320,20 +321,55 @@ const ViewerPage: React.FC = () => {
           {/* Main Content Area */}
           <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
             {/* Tab Navigation */}
-            <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+            <Box sx={{ borderBottom: 1, borderColor: 'divider', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <Tabs value={activeTab} onChange={(_, newValue) => setActiveTab(newValue)}>
                 <Tab label="Image Viewer" />
                 <Tab label="AI Analysis" />
                 <Tab label="Similar Cases" />
                 <Tab label="Structured Reporting" />
               </Tabs>
+              
+              {/* Viewer Mode Toggle */}
+              {activeTab === 0 && (
+                <Box sx={{ pr: 2 }}>
+                  <ToggleButtonGroup
+                    value={viewerType}
+                    exclusive
+                    onChange={(_, newValue) => {
+                      if (newValue !== null) {
+                        setViewerType(newValue)
+                      }
+                    }}
+                    size="small"
+                  >
+                    <ToggleButton value="legacy">
+                      2D Stack
+                    </ToggleButton>
+                    <ToggleButton value="cornerstone3d">
+                      Cornerstone
+                    </ToggleButton>
+                    <ToggleButton value="3d">
+                      🎨 3D Volume
+                    </ToggleButton>
+                  </ToggleButtonGroup>
+                </Box>
+              )}
             </Box>
 
             {/* Tab Content */}
             <Box sx={{ flex: 1 }}>
               <TabPanel value={activeTab} index={0}>
                 {studyData ? (
-                  viewerType === 'cornerstone3d' ? (
+                  viewerType === '3d' ? (
+                    <VolumeViewer3D
+                      studyInstanceUID={studyData.studyInstanceUID}
+                      frameUrls={Array.from(
+                        { length: studyData.series?.[0]?.numberOfInstances || 1 },
+                        (_, i) => `/api/dicom/studies/${studyData.studyInstanceUID}/frames/${i}`
+                      )}
+                      totalFrames={studyData.series?.[0]?.numberOfInstances || 1}
+                    />
+                  ) : viewerType === 'cornerstone3d' ? (
                     <Cornerstone3DViewer
                       studyInstanceUID={studyData.studyInstanceUID}
                       seriesInstanceUID={studyData.series?.[0]?.seriesInstanceUID}

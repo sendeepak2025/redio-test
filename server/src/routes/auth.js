@@ -2,7 +2,7 @@ const express = require('express')
 const router = express.Router()
 const authController = require('../controllers/authController')
 const authenticationController = require('../controllers/authenticationController')
-const authMiddleware = require('../middleware/authMiddleware')
+const { authenticate } = require('../middleware/authMiddleware')
 const AuthenticationService = require('../services/authentication-service')
 
 // Initialize authentication service for middleware
@@ -12,7 +12,7 @@ const authService = new AuthenticationService()
 router.post('/login', authController.login)
 router.post('/logout', authController.logout)
 router.post('/refresh', authController.refresh)
-router.get('/users/me', authMiddleware, authController.me)
+router.get('/users/me', authenticate, authController.me)
 
 // New OAuth2/OIDC and MFA endpoints
 router.get('/oauth2/login', authenticationController.initiateOAuth2Login)
