@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const winston = require('winston');
+const { randomUUID } = require('../utils/crypto-polyfill');
 
 /**
  * WebhookSecurity class for HMAC-SHA256 validation, replay attack prevention, and rate limiting
@@ -104,7 +105,7 @@ class WebhookSecurity {
     this.logger.warn('Security Event', {
       event,
       timestamp: new Date().toISOString(),
-      correlationId: crypto.randomUUID(),
+      correlationId: randomUUID(),
       ...details
     });
   }

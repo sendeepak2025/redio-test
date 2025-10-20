@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 const winston = require('winston');
 const path = require('path');
+const { randomUUID } = require('./crypto-polyfill');
 
 /**
  * Comprehensive Audit Logger for Node Server Operations
@@ -82,7 +83,7 @@ class AuditLogger {
    * Generate unique correlation ID for tracking related events
    */
   generateCorrelationId() {
-    return crypto.randomUUID();
+    return randomUUID();
   }
 
   /**
