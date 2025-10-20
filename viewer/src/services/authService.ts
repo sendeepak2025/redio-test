@@ -6,6 +6,19 @@ import type {
   RefreshTokenResponse 
 } from '../types/auth'
 
+// Polyfill for crypto.randomUUID if not available
+const generateUUID = (): string => {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID()
+  }
+  // Fallback UUID v4 generator
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = Math.random() * 16 | 0
+    const v = c === 'x' ? r : (r & 0x3 | 0x8)
+    return v.toString(16)
+  })
+}
+
 class AuthService {
   private baseURL = '/auth'
 
@@ -178,7 +191,7 @@ axios.interceptors.request.use(
     }
     
     // Add correlation ID for request tracking
-    config.headers['x-correlation-id'] = crypto.randomUUID()
+    config.headers['x-correlation-id'] = generateUUID()
     
     // Ensure credentials are sent
     config.withCredentials = true
