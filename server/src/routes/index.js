@@ -27,6 +27,7 @@ const systemMonitoringRoutes = require('./system-monitoring');
 const usersRoutes = require('./users');
 const superAdminRoutes = require('./superadmin');
 const publicRoutes = require('./public');
+const exportRoutes = require('./export');
 
 const router = express.Router();
 
@@ -166,5 +167,8 @@ router.use('/api/superadmin', superAdminRoutes);
 
 // Public API - No authentication required
 router.use('/api/public', publicRoutes);
+
+// Export API - Data export with DICOM files
+router.use('/api/export', exportRoutes);
 
 module.exports = router;

@@ -38,6 +38,8 @@ import {
   Error as ErrorIcon,
   Upload,
   CheckCircle,
+  Download,
+  FileDownload,
 } from "@mui/icons-material"
 import { Helmet } from "react-helmet-async"
 import {
@@ -46,6 +48,8 @@ import {
   getStudies,
   createPatient,
   uploadDicomFileForPatient,
+  exportPatientData,
+  exportStudyData,
 } from "../../services/ApiService"
 import { useNavigate } from "react-router-dom"
 
@@ -91,6 +95,10 @@ const PatientsPage: React.FC = () => {
   const [pacsUploading, setPacsUploading] = useState(false)
   const [pacsUploadSuccess, setPacsUploadSuccess] = useState(false)
   const [uploadedStudyUID, setUploadedStudyUID] = useState<string | null>(null)
+  const [exporting, setExporting] = useState(false)
+  const [exportDialogOpen, setExportDialogOpen] = useState(false)
+  const [exportTarget, setExportTarget] = useState<{ type: 'patient' | 'study', id: string } | null>(null)
+  const [includeImages, setIncludeImages] = useState(true)
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -265,6 +273,44 @@ const PatientsPage: React.FC = () => {
     }
   }
 
+  const handleExportPatient = (patientID: string) => {
+    setExportTarget({ type: 'patient', id: patientID })
+    setExportDialogOpen(true)
+  }
+
+  const handleExportStudy = (studyUID: string) => {
+    setExportTarget({ type: 'study', id: studyUID })
+    setExportDialogOpen(true)
+  }
+
+  const handleExportConfirm = async () => {
+    if (!exportTarget) return
+
+    try {
+      setExporting(true)
+      setError(null)
+
+      if (exportTarget.type === 'patient') {
+        await exportPatientData(exportTarget.id, includeImages, 'zip')
+      } else {
+        await exportStudyData(exportTarget.id, includeImages, 'zip')
+      }
+
+      setExportDialogOpen(false)
+      setExportTarget(null)
+    } catch (e: any) {
+      setError(e.message || 'Export failed')
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  const handleExportClose = () => {
+    setExportDialogOpen(false)
+    setExportTarget(null)
+    setIncludeImages(true)
+  }
+
   return (
     <>
       <Helmet>
@@ -369,6 +415,19 @@ const PatientsPage: React.FC = () => {
                               </Typography>
                             )}
                           </CardActionArea>
+                          <Box sx={{ px: 3, pb: 2 }}>
+                            <Button
+                              size="small"
+                              startIcon={<FileDownload />}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleExportPatient(patient.patientID)
+                              }}
+                              sx={{ textTransform: "none" }}
+                            >
+                              Export Data
+                            </Button>
+                          </Box>
                         </Card>
                       </Grid>
                     ))}
@@ -454,6 +513,15 @@ const PatientsPage: React.FC = () => {
                                 </Box>
                               }
                             />
+                            <IconButton
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleExportStudy(study.studyInstanceUID)
+                              }}
+                              sx={{ mr: 1 }}
+                            >
+                              <Download />
+                            </IconButton>
                             <ChevronRight color="action" />
                           </ListItemButton>
                           {idx < allStudies.length - 1 && <Divider />}
@@ -631,7 +699,18 @@ const PatientsPage: React.FC = () => {
                             UID: {study.studyInstanceUID}
                           </Typography>
                         </Box>
-                        <ChevronRight color="action" />
+                        <Stack direction="row" spacing={1} alignItems="center">
+                          <IconButton
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleExportStudy(study.studyInstanceUID)
+                            }}
+                            size="small"
+                          >
+                            <Download fontSize="small" />
+                          </IconButton>
+                          <ChevronRight color="action" />
+                        </Stack>
                       </Stack>
                     </CardActionArea>
                   </Card>
@@ -885,6 +964,96 @@ const PatientsPage: React.FC = () => {
             </Button>
           </DialogActions>
         )}
+      </Dialog>
+
+      {/* Export Dialog */}
+      <Dialog open={exportDialogOpen} onClose={handleExportClose} maxWidth="sm" fullWidth>
+        <DialogTitle
+          sx={{
+            background: "linear-gradient(135deg, #1976d2 0%, #1565c0 100%)",
+            color: "white",
+          }}
+        >
+          <Stack direction="row" justifyContent="space-between" alignItems="center">
+            <Box>
+              <Typography variant="h6" fontWeight="bold">
+                Export {exportTarget?.type === 'patient' ? 'Patient' : 'Study'} Data
+              </Typography>
+              <Typography variant="body2" sx={{ opacity: 0.9, mt: 0.5 }}>
+                Download complete data package with DICOM files
+              </Typography>
+            </Box>
+            <IconButton onClick={handleExportClose} sx={{ color: "white" }}>
+              <Close />
+            </IconButton>
+          </Stack>
+        </DialogTitle>
+
+        <DialogContent sx={{ mt: 3 }}>
+          <Stack spacing={3}>
+            <Alert severity="info" icon={<FileDownload />}>
+              <Typography variant="body2">
+                This will create a ZIP file containing:
+              </Typography>
+              <Box component="ul" sx={{ mt: 1, mb: 0, pl: 2 }}>
+                <li>Complete metadata (JSON format)</li>
+                <li>Patient and study information</li>
+                {includeImages && <li>All DICOM files (.dcm)</li>}
+                {includeImages && <li>Preview images (PNG format)</li>}
+                <li>AI analysis results (if available)</li>
+              </Box>
+            </Alert>
+
+            <Box>
+              <Stack direction="row" spacing={2} alignItems="center">
+                <input
+                  type="checkbox"
+                  id="includeImages"
+                  checked={includeImages}
+                  onChange={(e) => setIncludeImages(e.target.checked)}
+                  style={{ width: 20, height: 20, cursor: 'pointer' }}
+                />
+                <label htmlFor="includeImages" style={{ cursor: 'pointer' }}>
+                  <Typography variant="body1">
+                    Include DICOM images and previews
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Unchecking this will only export metadata (smaller file size)
+                  </Typography>
+                </label>
+              </Stack>
+            </Box>
+
+            {exportTarget && (
+              <Paper variant="outlined" sx={{ p: 2, bgcolor: "grey.50" }}>
+                <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
+                  Export Details:
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Type: {exportTarget.type === 'patient' ? 'Patient Data' : 'Study Data'}
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ fontFamily: "monospace", mt: 0.5 }}>
+                  ID: {exportTarget.id}
+                </Typography>
+              </Paper>
+            )}
+          </Stack>
+        </DialogContent>
+
+        <DialogActions sx={{ p: 2.5, bgcolor: "grey.50" }}>
+          <Button onClick={handleExportClose} disabled={exporting} sx={{ textTransform: "none" }}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleExportConfirm}
+            variant="contained"
+            disabled={exporting}
+            startIcon={exporting ? <CircularProgress size={20} color="inherit" /> : <FileDownload />}
+            sx={{ textTransform: "none", px: 3 }}
+          >
+            {exporting ? "Exporting..." : "Export Data"}
+          </Button>
+        </DialogActions>
       </Dialog>
 
       {/* Error Alert */}

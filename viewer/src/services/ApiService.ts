@@ -426,6 +426,117 @@ export const checkAIHealth = async () => {
   return response.json()
 }
 
+/**
+ * Export API Methods
+ */
+
+/**
+ * Export patient data with all studies and DICOM files
+ */
+export const exportPatientData = async (
+  patientID: string,
+  includeImages: boolean = true,
+  format: 'zip' | 'json' = 'zip'
+) => {
+  const url = `${BACKEND_URL}/api/export/patient/${patientID}?includeImages=${includeImages}&format=${format}`
+  const token = getAuthToken()
+
+  const response = await fetch(url, {
+    method: 'GET',
+    credentials: 'include',
+    headers: {
+      ...(token && { Authorization: `Bearer ${token}` }),
+    },
+  })
+
+  if (!response.ok) {
+    throw new Error('Export failed')
+  }
+
+  // Download the file
+  const blob = await response.blob()
+  const downloadUrl = window.URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = downloadUrl
+  link.download = `patient_${patientID}_export.${format}`
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  window.URL.revokeObjectURL(downloadUrl)
+
+  return { success: true }
+}
+
+/**
+ * Export study data with DICOM files
+ */
+export const exportStudyData = async (
+  studyUID: string,
+  includeImages: boolean = true,
+  format: 'zip' | 'json' = 'zip'
+) => {
+  const url = `${BACKEND_URL}/api/export/study/${studyUID}?includeImages=${includeImages}&format=${format}`
+  const token = getAuthToken()
+
+  const response = await fetch(url, {
+    method: 'GET',
+    credentials: 'include',
+    headers: {
+      ...(token && { Authorization: `Bearer ${token}` }),
+    },
+  })
+
+  if (!response.ok) {
+    throw new Error('Export failed')
+  }
+
+  // Download the file
+  const blob = await response.blob()
+  const downloadUrl = window.URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = downloadUrl
+  link.download = `study_${studyUID}_export.${format}`
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  window.URL.revokeObjectURL(downloadUrl)
+
+  return { success: true }
+}
+
+/**
+ * Export all data (bulk export)
+ */
+export const exportAllData = async (includeImages: boolean = false) => {
+  const url = `${BACKEND_URL}/api/export/all?includeImages=${includeImages}`
+  const token = getAuthToken()
+
+  const response = await fetch(url, {
+    method: 'GET',
+    credentials: 'include',
+    headers: {
+      ...(token && { Authorization: `Bearer ${token}` }),
+    },
+  })
+
+  if (!response.ok) {
+    throw new Error('Export failed')
+  }
+
+  // Download the file
+  const blob = await response.blob()
+  const downloadUrl = window.URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = downloadUrl
+  link.download = `complete_export.zip`
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  window.URL.revokeObjectURL(downloadUrl)
+
+  return { success: true }
+}
+
 export default {
   apiCall,
   uploadFile,
@@ -457,4 +568,8 @@ export default {
   summarizeMedicalText,
   getStudyAIAnalysis,
   checkAIHealth,
+  // Export API
+  exportPatientData,
+  exportStudyData,
+  exportAllData,
 }
