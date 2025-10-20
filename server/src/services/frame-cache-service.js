@@ -12,7 +12,7 @@ const dicomParser = require('dicom-parser');
 class FrameCacheService {
   constructor(config = {}) {
     this.cacheDir = config.cacheDir || path.resolve(__dirname, '../../backend');
-    this.orthancUrl = config.orthancUrl || process.env.ORTHANC_URL || 'http://localhost:8042';
+    this.orthancUrl = config.orthancUrl || process.env.ORTHANC_URL || 'http://69.62.70.102:8042';
     this.orthancAuth = {
       username: process.env.ORTHANC_USERNAME || 'orthanc',
       password: process.env.ORTHANC_PASSWORD || 'orthanc'

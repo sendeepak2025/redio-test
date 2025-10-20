@@ -47,39 +47,22 @@ async function getPatientStudies(req, res) {
   try {
     const { patientID } = req.params;
 
-    // Build query based on user's hospital
-    const patientQuery = { patientID };
-    if (req.user && req.user.hospitalId) {
-      const isSuperAdmin = req.user.roles && (
-        req.user.roles.includes('system:admin') ||
-        req.user.roles.includes('super_admin')
-      );
-
-      if (!isSuperAdmin) {
-        patientQuery.hospitalId = req.user.hospitalId;
-      }
-    }
-
-    const patient = await Patient.findOne(patientQuery).lean();
+    // Step 1️⃣: Find patient by patientID
+    const patient = await Patient.findOne({ patientID }).lean();
     if (!patient) {
       return res.status(404).json({ success: false, message: 'Patient not found' });
     }
 
-    // Build study query
-    const studyQuery = { patientID };
-    if (patient.hospitalId) {
-      studyQuery.hospitalId = patient.hospitalId;
-    }
-
+    // Step 2️⃣: Fetch studies based on patientID
     let studies = [];
     if (Array.isArray(patient.studyIds) && patient.studyIds.length > 0) {
-      studyQuery.studyInstanceUID = { $in: patient.studyIds };
-      studies = await Study.find(studyQuery).lean();
+      studies = await Study.find({ studyInstanceUID: { $in: patient.studyIds } }).lean();
     } else {
-      // Fallback: query by patientID if studyIds are not populated
-      studies = await Study.find(studyQuery).lean();
+      // Fallback: fetch all studies with the same patientID
+      studies = await Study.find({ patientID }).lean();
     }
 
+    // Step 3️⃣: Format output
     const out = studies.map(s => ({
       studyInstanceUID: s.studyInstanceUID,
       patientName: s.patientName || patient.patientName || 'Unknown',
@@ -87,16 +70,17 @@ async function getPatientStudies(req, res) {
       modality: s.modality || 'OT',
       numberOfSeries: s.numberOfSeries || 1,
       numberOfInstances: s.numberOfInstances || 1,
-      studyDescription: s.studyDescription || '',
-      hospitalId: s.hospitalId
+      studyDescription: s.studyDescription || ''
     }));
 
     res.json({ success: true, data: out });
+
   } catch (e) {
-    console.error('Failed to list patient studies:', e);
+    console.error('❌ Failed to list patient studies:', e);
     res.status(500).json({ success: false, message: e.message });
   }
 }
+
 
 async function createPatient(req, res) {
   try {

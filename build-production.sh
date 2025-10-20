@@ -111,7 +111,7 @@ EMAIL_FROM=noreply@medical-imaging.local
 EMAIL_TO=admin@medical-imaging.local
 
 # Orthanc PACS
-ORTHANC_URL=http://localhost:8042
+ORTHANC_URL=http://69.62.70.102:8042
 ORTHANC_USERNAME=orthanc
 ORTHANC_PASSWORD=orthanc
 
@@ -196,7 +196,7 @@ server {
 
     # Backend API
     location /api {
-        proxy_pass http://localhost:8001;
+        proxy_pass https://apiradio.varnaamedicalbillingsolutions.com;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection 'upgrade';
@@ -215,7 +215,7 @@ server {
 
     # Auth endpoints
     location /auth {
-        proxy_pass http://localhost:8001;
+        proxy_pass https://apiradio.varnaamedicalbillingsolutions.com;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
@@ -225,7 +225,7 @@ server {
 
     # Health check
     location /health {
-        proxy_pass http://localhost:8001;
+        proxy_pass https://apiradio.varnaamedicalbillingsolutions.com;
         access_log off;
     }
 

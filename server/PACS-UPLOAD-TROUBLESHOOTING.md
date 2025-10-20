@@ -4,21 +4,21 @@
 
 ### 1. Check Environment Configuration
 ```bash
-curl http://localhost:8001/api/pacs/upload/config-check
+curl https://apiradio.varnaamedicalbillingsolutions.com/api/pacs/upload/config-check
 ```
 
 This will show you if all required environment variables are set.
 
 ### 2. Test PACS Connection
 ```bash
-curl http://localhost:8001/api/pacs/upload/test
+curl https://apiradio.varnaamedicalbillingsolutions.com/api/pacs/upload/test
 ```
 
 This will test if the server can connect to Orthanc PACS.
 
 ### 3. Check Orthanc Status
 ```bash
-curl http://localhost:8042/system
+curl http://69.62.70.102:8042/system
 ```
 
 This should return Orthanc system information if it's running.
@@ -33,7 +33,7 @@ This should return Orthanc system information if it's running.
 1. Check your `.env` file in `node-server/` directory
 2. Add or verify:
    ```env
-   ORTHANC_URL=http://localhost:8042
+   ORTHANC_URL=http://69.62.70.102:8042
    ORTHANC_USERNAME=orthanc
    ORTHANC_PASSWORD=orthanc
    ```
@@ -51,7 +51,7 @@ This should return Orthanc system information if it's running.
    
 2. Verify Orthanc is running:
    ```bash
-   curl http://localhost:8042/system
+   curl http://69.62.70.102:8042/system
    ```
 
 3. Check if port 8042 is accessible:
@@ -78,7 +78,7 @@ This should return Orthanc system information if it's running.
 
 2. Check Orthanc storage:
    ```bash
-   curl http://localhost:8042/statistics
+   curl http://69.62.70.102:8042/statistics
    ```
 
 3. Verify credentials in `.env` match Orthanc configuration
@@ -95,17 +95,17 @@ This should return Orthanc system information if it's running.
 **Solutions**:
 1. Check if study exists in database:
    ```bash
-   curl http://localhost:8001/api/dicom/studies
+   curl https://apiradio.varnaamedicalbillingsolutions.com/api/dicom/studies
    ```
 
 2. Check if instances were created:
    ```bash
-   curl http://localhost:8001/api/pacs/debug/{studyUID}
+   curl https://apiradio.varnaamedicalbillingsolutions.com/api/pacs/debug/{studyUID}
    ```
 
 3. Verify Orthanc has the instances:
    ```bash
-   curl http://localhost:8042/studies
+   curl http://69.62.70.102:8042/studies
    ```
 
 ### Issue 5: "MongoDB connection error"
@@ -149,7 +149,7 @@ Optional but recommended:
 
 ### Using cURL:
 ```bash
-curl -X POST http://localhost:8001/api/pacs/upload \
+curl -X POST https://apiradio.varnaamedicalbillingsolutions.com/api/pacs/upload \
   -F "dicom=@/path/to/your/file.dcm" \
   -H "Content-Type: multipart/form-data"
 ```
@@ -201,13 +201,13 @@ If issues persist:
 1. **Collect diagnostic information**:
    ```bash
    # Environment check
-   curl http://localhost:8001/api/pacs/upload/config-check > config-check.json
+   curl https://apiradio.varnaamedicalbillingsolutions.com/api/pacs/upload/config-check > config-check.json
    
    # Connection test
-   curl http://localhost:8001/api/pacs/upload/test > connection-test.json
+   curl https://apiradio.varnaamedicalbillingsolutions.com/api/pacs/upload/test > connection-test.json
    
    # Orthanc status
-   curl http://localhost:8042/system > orthanc-status.json
+   curl http://69.62.70.102:8042/system > orthanc-status.json
    ```
 
 2. **Check server logs** for error messages

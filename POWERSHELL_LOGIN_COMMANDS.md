@@ -5,31 +5,31 @@
 ### Test Super Admin Login (Username)
 ```powershell
 $body = @{username="superadmin"; password="12345678"} | ConvertTo-Json
-Invoke-RestMethod -Uri "http://localhost:8001/auth/login" -Method Post -ContentType "application/json" -Body $body
+Invoke-RestMethod -Uri "https://apiradio.varnaamedicalbillingsolutions.com/auth/login" -Method Post -ContentType "application/json" -Body $body
 ```
 
 ### Test Super Admin Login (Email)
 ```powershell
 $body = @{email="superadmin@gmail.com"; password="12345678"} | ConvertTo-Json
-Invoke-RestMethod -Uri "http://localhost:8001/auth/login" -Method Post -ContentType "application/json" -Body $body
+Invoke-RestMethod -Uri "https://apiradio.varnaamedicalbillingsolutions.com/auth/login" -Method Post -ContentType "application/json" -Body $body
 ```
 
 ### Test Hospital Admin Login (Username)
 ```powershell
 $body = @{username="hospital"; password="123456"} | ConvertTo-Json
-Invoke-RestMethod -Uri "http://localhost:8001/auth/login" -Method Post -ContentType "application/json" -Body $body
+Invoke-RestMethod -Uri "https://apiradio.varnaamedicalbillingsolutions.com/auth/login" -Method Post -ContentType "application/json" -Body $body
 ```
 
 ### Test Hospital Admin Login (Email)
 ```powershell
 $body = @{email="hospital@gmail.com"; password="123456"} | ConvertTo-Json
-Invoke-RestMethod -Uri "http://localhost:8001/auth/login" -Method Post -ContentType "application/json" -Body $body
+Invoke-RestMethod -Uri "https://apiradio.varnaamedicalbillingsolutions.com/auth/login" -Method Post -ContentType "application/json" -Body $body
 ```
 
 ### Test Default Admin Login
 ```powershell
 $body = @{username="admin"; password="admin123"} | ConvertTo-Json
-Invoke-RestMethod -Uri "http://localhost:8001/auth/login" -Method Post -ContentType "application/json" -Body $body
+Invoke-RestMethod -Uri "https://apiradio.varnaamedicalbillingsolutions.com/auth/login" -Method Post -ContentType "application/json" -Body $body
 ```
 
 ## Run Automated Test Script
@@ -88,7 +88,7 @@ Invoke-RestMethod -Uri "http://localhost:8001/auth/login" -Method Post -ContentT
 
 ### Error: "Unable to connect to the remote server"
 - Make sure the backend server is running on port 8001
-- Check: `http://localhost:8001/health`
+- Check: `https://apiradio.varnaamedicalbillingsolutions.com/health`
 
 ### Error: "Invalid credentials"
 - Verify the username/email and password are correct

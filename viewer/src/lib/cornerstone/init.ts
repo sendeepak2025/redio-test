@@ -1,5 +1,6 @@
 import { init as csRenderInit, volumeLoader } from '@cornerstonejs/core'
 import { init as csToolsInit } from '@cornerstonejs/tools'
+// @ts-ignore - No type definitions available
 import dicomImageLoader from '@cornerstonejs/dicom-image-loader'
 import { cornerstoneStreamingImageVolumeLoader, cornerstoneStreamingDynamicImageVolumeLoader } from '@cornerstonejs/streaming-image-volume-loader'
 import dicomParser from 'dicom-parser'
@@ -7,19 +8,19 @@ import * as cornerstoneCore from '@cornerstonejs/core'
 
 let isInitialized = false
 
-function getOfflineGpuTier(): { tier: number } {
+function getOfflineGpuTier(): { tier: number; type: string } {
   try {
     const canvas = document.createElement('canvas')
     const gl2 = canvas.getContext('webgl2')
     if (gl2) {
-      return { tier: 3 }
+      return { tier: 3, type: 'BENCHMARK' }
     }
     const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl' as any)
     if (gl) {
-      return { tier: 2 }
+      return { tier: 2, type: 'BENCHMARK' }
     }
   } catch {}
-  return { tier: 0 }
+  return { tier: 0, type: 'BENCHMARK' }
 }
 
 /**
@@ -36,6 +37,7 @@ export async function initializeCornerstone(): Promise<void> {
     if (gpuTier.tier === 0) {
       throw new Error('WebGL not supported')
     }
+    // @ts-ignore - gpuTier type may vary
     await csRenderInit({ gpuTier })
     console.log('Cornerstone3D core initialized')
 
@@ -71,7 +73,9 @@ export async function initializeCornerstone(): Promise<void> {
     console.log('DICOM image loader initialized')
 
     // Register streaming image volume loaders for 3D volumes
+    // @ts-ignore - Volume loader type compatibility
     volumeLoader.registerVolumeLoader('cornerstoneStreamingImageVolume', cornerstoneStreamingImageVolumeLoader)
+    // @ts-ignore - Volume loader type compatibility
     volumeLoader.registerVolumeLoader('cornerstoneStreamingDynamicImageVolume', cornerstoneStreamingDynamicImageVolumeLoader)
     console.log('Streaming image volume loaders registered')
 

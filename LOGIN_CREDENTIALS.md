@@ -60,7 +60,7 @@ You can login using **either username OR email**:
 
 #### Test Super Admin Login (Username)
 ```bash
-curl -X POST http://localhost:8001/auth/login \
+curl -X POST https://apiradio.varnaamedicalbillingsolutions.com/auth/login \
   -H "Content-Type: application/json" \
   -d '{"username":"superadmin","password":"12345678"}' \
   -c cookies.txt
@@ -68,7 +68,7 @@ curl -X POST http://localhost:8001/auth/login \
 
 #### Test Super Admin Login (Email)
 ```bash
-curl -X POST http://localhost:8001/auth/login \
+curl -X POST https://apiradio.varnaamedicalbillingsolutions.com/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email":"superadmin@gmail.com","password":"12345678"}' \
   -c cookies.txt
@@ -76,7 +76,7 @@ curl -X POST http://localhost:8001/auth/login \
 
 #### Test Hospital Admin Login (Username)
 ```bash
-curl -X POST http://localhost:8001/auth/login \
+curl -X POST https://apiradio.varnaamedicalbillingsolutions.com/auth/login \
   -H "Content-Type: application/json" \
   -d '{"username":"hospital","password":"123456"}' \
   -c cookies.txt
@@ -84,7 +84,7 @@ curl -X POST http://localhost:8001/auth/login \
 
 #### Test Hospital Admin Login (Email)
 ```bash
-curl -X POST http://localhost:8001/auth/login \
+curl -X POST https://apiradio.varnaamedicalbillingsolutions.com/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email":"hospital@gmail.com","password":"123456"}' \
   -c cookies.txt
@@ -185,7 +185,7 @@ After successful login, users are automatically redirected based on their role:
 ### 1. Check Server is Running
 ```bash
 # Server should be running on port 8001
-curl http://localhost:8001/health
+curl https://apiradio.varnaamedicalbillingsolutions.com/health
 ```
 
 ### 2. Check Database Connection

@@ -27,10 +27,10 @@ import { Helmet } from 'react-helmet-async'
 import { useNavigate } from 'react-router-dom'
 
 import WorklistTable from '@/components/worklist/WorklistTable'
-import WorklistFilters from '@/components/worklist/WorklistFilters'
+import { WorklistFilters as WorklistFiltersComponent } from '@/components/worklist/WorklistFilters'
 import PatientContextPanel from '@/components/worklist/PatientContextPanel'
 import { useStudyCache } from '@/hooks/useStudyCache'
-import type { Study, WorklistFilters as Filters, SortOptions } from '@/types/worklist'
+import type { Study, WorklistFilters, SortOptions } from '@/types/worklist'
 
 const WorklistPage: React.FC = () => {
   const theme = useTheme()
@@ -39,7 +39,7 @@ const WorklistPage: React.FC = () => {
   
   // State
   const [selectedStudy, setSelectedStudy] = useState<Study | null>(null)
-  const [filters, setFilters] = useState<Partial<Filters>>({})
+  const [filters, setFilters] = useState<Partial<WorklistFilters>>({})
   const [sortOptions, setSortOptions] = useState<SortOptions>({
     field: 'studyDate',
     direction: 'desc',
@@ -148,7 +148,7 @@ const WorklistPage: React.FC = () => {
   }, [updateStudy])
 
   // Handle filters change
-  const handleFiltersChange = useCallback((newFilters: Partial<Filters>) => {
+  const handleFiltersChange = useCallback((newFilters: Partial<WorklistFilters>) => {
     setFilters(newFilters)
     setPage(1) // Reset to first page when filters change
   }, [])
@@ -255,7 +255,7 @@ const WorklistPage: React.FC = () => {
           <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
             {/* Filters (Desktop) */}
             {!isMobile && (
-              <WorklistFilters
+              <WorklistFiltersComponent
                 filters={filters}
                 onFiltersChange={handleFiltersChange}
                 onSearch={handleSearch}
@@ -354,7 +354,7 @@ const WorklistPage: React.FC = () => {
           }}
         >
           <Box sx={{ p: 2 }}>
-            <WorklistFilters
+            <WorklistFiltersComponent
               filters={filters}
               onFiltersChange={handleFiltersChange}
               onSearch={handleSearch}

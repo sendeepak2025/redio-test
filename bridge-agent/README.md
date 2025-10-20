@@ -30,7 +30,7 @@ npm install
    HOSPITAL_NAME=Hospital A Main Campus
    AWS_API_URL=https://api.yourdomain.com
    API_KEY=your-api-key
-   ORTHANC_URL=http://localhost:8042
+   ORTHANC_URL=http://69.62.70.102:8042
    ```
 
 3. Get API key from AWS admin
@@ -98,7 +98,7 @@ pm2 status
 ### Orthanc Issues
 - Verify ORTHANC_URL is accessible
 - Check credentials
-- Test: `curl http://localhost:8042/system`
+- Test: `curl http://69.62.70.102:8042/system`
 
 ### Upload Failures
 - Check AWS API logs

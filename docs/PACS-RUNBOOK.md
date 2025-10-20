@@ -30,7 +30,7 @@ docker-compose up -d orthanc dicom-bridge redis
 
 # Verify services
 docker-compose ps
-curl http://localhost:8042/system
+curl http://69.62.70.102:8042/system
 ```
 
 ### 2. Test DICOM Connectivity
@@ -39,7 +39,7 @@ curl http://localhost:8042/system
 echoscu -aec ORTHANC_DEV_AE localhost 4242
 
 # Or use Orthanc REST
-curl -u orthanc:orthanc_secure_2024 http://localhost:8042/modalities/self/echo
+curl -u orthanc:orthanc_secure_2024 http://69.62.70.102:8042/modalities/self/echo
 ```
 
 ### 3. Configure PACS Secondary Destination
@@ -68,7 +68,7 @@ Type: Secondary Copy
 storescu -aec ORTHANC_DEV_AE [ORTHANC_IP] 4242 test.dcm
 
 # Verify received
-curl -u orthanc:orthanc_secure_2024 http://localhost:8042/studies
+curl -u orthanc:orthanc_secure_2024 http://69.62.70.102:8042/studies
 ```
 
 ### Test 2: Bridge Processing
@@ -93,7 +93,7 @@ curl http://localhost:3001/health/detailed
 curl http://localhost:3001/health
 
 # Orthanc health  
-curl -u orthanc:orthanc_secure_2024 http://localhost:8042/system
+curl -u orthanc:orthanc_secure_2024 http://69.62.70.102:8042/system
 
 # Queue status
 curl http://localhost:3001/health/detailed
@@ -120,7 +120,7 @@ netstat -ln | grep 4242
 **Webhook Not Firing**
 ```bash
 # Check Orthanc config
-curl -u orthanc:orthanc_secure_2024 http://localhost:8042/tools/configuration
+curl -u orthanc:orthanc_secure_2024 http://69.62.70.102:8042/tools/configuration
 
 # Test webhook manually
 curl -X POST http://localhost:3001/api/orthanc/new-instance \
@@ -134,7 +134,7 @@ curl -X POST http://localhost:3001/api/orthanc/new-instance \
 docker exec redis-bridge redis-cli ping
 
 # Check main API connectivity
-curl http://localhost:8001/
+curl https://apiradio.varnaamedicalbillingsolutions.com/
 ```
 
 ## Emergency Procedures
@@ -143,7 +143,7 @@ curl http://localhost:8001/
 ```bash
 # Stop webhook processing
 curl -u orthanc:orthanc_secure_2024 -X PUT \
-  "http://localhost:8042/tools/configuration" \
+  "http://69.62.70.102:8042/tools/configuration" \
   -d '{"OnStoredInstance": []}' \
   -H "Content-Type: application/json"
 

@@ -241,15 +241,18 @@ export const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     
     // Toggle annotation visibility
     try {
-      const annotationManager = annotation.state.getDefaultAnnotationManager()
-      measurements.forEach(measurement => {
-        if (!measurement.aiGenerated) {
-          const ann = annotationManager.getAnnotation(measurement.id)
-          if (ann) {
-            ann.isVisible = !measurementsVisible
+      // @ts-ignore - getAnnotationManager may have different name in some versions
+      const annotationManager = annotation.state.getAnnotationManager ? annotation.state.getAnnotationManager() : annotation.state.getDefaultAnnotationManager?.()
+      if (annotationManager) {
+        measurements.forEach(measurement => {
+          if (!measurement.aiGenerated) {
+            const ann = annotationManager.getAnnotation(measurement.id)
+            if (ann) {
+              ann.isVisible = !measurementsVisible
+            }
           }
-        }
-      })
+        })
+      }
       viewport?.render()
     } catch (error) {
       console.warn('Failed to toggle measurement visibility:', error)

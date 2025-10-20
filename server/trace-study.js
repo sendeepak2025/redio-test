@@ -8,7 +8,7 @@ const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 const STUDY_UID = '1.3.6.1.4.1.16568.1760640137402.333951138';
-const ORTHANC_URL = process.env.ORTHANC_URL || 'http://localhost:8042';
+const ORTHANC_URL = process.env.ORTHANC_URL || 'http://69.62.70.102:8042';
 const ORTHANC_AUTH = {
   username: process.env.ORTHANC_USERNAME || 'orthanc',
   password: process.env.ORTHANC_PASSWORD || 'orthanc'

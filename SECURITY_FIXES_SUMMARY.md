@@ -193,23 +193,23 @@ if (process.env.ENABLE_AUTH_LOGGING === 'true') {
 
 ```bash
 # ✅ Test 1: Unauthenticated access blocked
-curl http://localhost:8001/api/dicom/studies
+curl https://apiradio.varnaamedicalbillingsolutions.com/api/dicom/studies
 # Expected: 401 Unauthorized ✓
 
 # ✅ Test 2: Login works
-curl -X POST http://localhost:8001/auth/login \
+curl -X POST https://apiradio.varnaamedicalbillingsolutions.com/auth/login \
   -H "Content-Type: application/json" \
   -d '{"username":"admin","password":"admin123"}'
 # Expected: Token returned ✓
 
 # ✅ Test 3: Authenticated access works
 curl -H "Authorization: Bearer $TOKEN" \
-  http://localhost:8001/api/dicom/studies
+  https://apiradio.varnaamedicalbillingsolutions.com/api/dicom/studies
 # Expected: Studies returned ✓
 
 # ✅ Test 4: Invalid token rejected
 curl -H "Authorization: Bearer invalid_token" \
-  http://localhost:8001/api/dicom/studies
+  https://apiradio.varnaamedicalbillingsolutions.com/api/dicom/studies
 # Expected: 401 Invalid token ✓
 
 # ✅ Test 5: Missing JWT_SECRET in production fails safely
@@ -307,7 +307,7 @@ echo "JWT_SECRET=$(openssl rand -base64 32)" >> server/.env
 pm2 restart dicom-server
 
 # 4. Verify
-curl http://localhost:8001/health
+curl https://apiradio.varnaamedicalbillingsolutions.com/health
 ```
 
 ### Full Migration

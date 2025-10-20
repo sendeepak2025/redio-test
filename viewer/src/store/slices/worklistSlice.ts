@@ -193,16 +193,16 @@ const worklistSlice = createSlice({
       .addCase(updateStudyPriority.fulfilled, (state, action) => {
         const index = state.studies.findIndex(s => s.studyInstanceUID === action.payload.studyInstanceUID)
         if (index !== -1) {
-          state.studies[index] = action.payload
+          state.studies[index] = { ...state.studies[index], ...action.payload }
         }
         
         const filteredIndex = state.filteredStudies.findIndex(s => s.studyInstanceUID === action.payload.studyInstanceUID)
         if (filteredIndex !== -1) {
-          state.filteredStudies[filteredIndex] = action.payload
+          state.filteredStudies[filteredIndex] = { ...state.filteredStudies[filteredIndex], ...action.payload }
         }
         
         if (state.selectedStudy?.studyInstanceUID === action.payload.studyInstanceUID) {
-          state.selectedStudy = action.payload
+          state.selectedStudy = { ...state.selectedStudy, ...action.payload }
         }
       })
 
@@ -211,16 +211,16 @@ const worklistSlice = createSlice({
       .addCase(assignStudy.fulfilled, (state, action) => {
         const index = state.studies.findIndex(s => s.studyInstanceUID === action.payload.studyInstanceUID)
         if (index !== -1) {
-          state.studies[index] = action.payload
+          state.studies[index] = { ...state.studies[index], ...action.payload }
         }
         
         const filteredIndex = state.filteredStudies.findIndex(s => s.studyInstanceUID === action.payload.studyInstanceUID)
         if (filteredIndex !== -1) {
-          state.filteredStudies[filteredIndex] = action.payload
+          state.filteredStudies[filteredIndex] = { ...state.filteredStudies[filteredIndex], ...action.payload }
         }
         
         if (state.selectedStudy?.studyInstanceUID === action.payload.studyInstanceUID) {
-          state.selectedStudy = action.payload
+          state.selectedStudy = { ...state.selectedStudy, ...action.payload }
         }
       })
   },

@@ -301,7 +301,7 @@ Returns primary role for routing:
 
 ### Test Super Admin Login
 ```bash
-curl -X POST http://localhost:8001/auth/login \
+curl -X POST https://apiradio.varnaamedicalbillingsolutions.com/auth/login \
   -H "Content-Type: application/json" \
   -d '{
     "email": "superadmin@gmail.com",
@@ -313,7 +313,7 @@ Expected: `role: "superadmin"`, `hospitalId: null`
 
 ### Test Hospital Admin Login
 ```bash
-curl -X POST http://localhost:8001/auth/login \
+curl -X POST https://apiradio.varnaamedicalbillingsolutions.com/auth/login \
   -H "Content-Type: application/json" \
   -d '{
     "email": "hospital@gmail.com",

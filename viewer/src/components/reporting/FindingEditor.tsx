@@ -69,6 +69,8 @@ export const FindingEditor: React.FC<FindingEditorProps> = ({
   const [severity, setSeverity] = useState<FindingSeverity>(finding?.severity || 'normal')
   const [confidence, setConfidence] = useState(finding?.confidence || 1.0)
   const [location, setLocation] = useState<AnatomicalLocation>(finding?.location || {
+    code: '',
+    display: '',
     bodyPart: '',
     laterality: undefined,
     region: ''
@@ -84,6 +86,7 @@ export const FindingEditor: React.FC<FindingEditorProps> = ({
     const newFinding: ReportFinding = {
       id: finding?.id || Date.now().toString(),
       type,
+      category: type,
       description,
       severity,
       confidence,

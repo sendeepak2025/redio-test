@@ -9,7 +9,7 @@ const Study = require('./src/models/Study');
 const Instance = require('./src/models/Instance');
 
 const client = axios.create({
-  baseURL: process.env.ORTHANC_URL || 'http://localhost:8042',
+  baseURL: process.env.ORTHANC_URL || 'http://69.62.70.102:8042',
   auth: {
     username: process.env.ORTHANC_USERNAME || 'orthanc',
     password: process.env.ORTHANC_PASSWORD || 'orthanc'

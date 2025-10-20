@@ -236,7 +236,7 @@ async function handleUpload(req, res) {
               columns: cols,
               numberOfFrames: frameCount,
               orthancInstanceId,
-              orthancUrl: `${process.env.ORTHANC_URL || 'http://localhost:8042'}/instances/${orthancInstanceId}`,
+              orthancUrl: `${process.env.ORTHANC_URL || 'http://69.62.70.102:8042'}/instances/${orthancInstanceId}`,
               orthancFrameIndex: i,
               orthancStudyId,
               orthancSeriesId,

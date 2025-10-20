@@ -34,7 +34,7 @@ EMAIL_FROM=noreply@medical-imaging.local
 EMAIL_TO=admin@medical-imaging.local
 
 # Orthanc PACS
-ORTHANC_URL=http://localhost:8042
+ORTHANC_URL=http://69.62.70.102:8042
 ORTHANC_USERNAME=orthanc
 ORTHANC_PASSWORD=orthanc
 
@@ -109,7 +109,7 @@ mkdir -p server/backups
 #### Email Testing:
 ```bash
 # Test email service
-curl -X POST http://localhost:8001/api/test-email \
+curl -X POST https://apiradio.varnaamedicalbillingsolutions.com/api/test-email \
   -H "Authorization: Bearer YOUR_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"to":"test@example.com"}'
@@ -118,7 +118,7 @@ curl -X POST http://localhost:8001/api/test-email \
 #### User Management Testing:
 ```bash
 # Create test user
-curl -X POST http://localhost:8001/api/users \
+curl -X POST https://apiradio.varnaamedicalbillingsolutions.com/api/users \
   -H "Authorization: Bearer YOUR_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -131,7 +131,7 @@ curl -X POST http://localhost:8001/api/users \
   }'
 
 # List users
-curl http://localhost:8001/api/users \
+curl https://apiradio.varnaamedicalbillingsolutions.com/api/users \
   -H "Authorization: Bearer YOUR_TOKEN"
 ```
 
@@ -351,7 +351,7 @@ If issues occur:
 
 4. **Verify:**
    ```bash
-   curl http://localhost:8001/health
+   curl https://apiradio.varnaamedicalbillingsolutions.com/health
    ```
 
 ---

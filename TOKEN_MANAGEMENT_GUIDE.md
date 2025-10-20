@@ -216,7 +216,7 @@ ENABLE_AUTH_LOGGING=true
 
 #### Frontend (.env)
 ```bash
-VITE_BACKEND_URL=http://localhost:8001
+VITE_BACKEND_URL=https://apiradio.varnaamedicalbillingsolutions.com
 ```
 
 ## Usage Examples
@@ -350,7 +350,7 @@ window.addEventListener('auth:logout-required', () => {
 
 ### Test Login
 ```bash
-curl -X POST http://localhost:8001/auth/login \
+curl -X POST https://apiradio.varnaamedicalbillingsolutions.com/auth/login \
   -H "Content-Type: application/json" \
   -d '{"username":"admin","password":"password"}' \
   -c cookies.txt
@@ -358,14 +358,14 @@ curl -X POST http://localhost:8001/auth/login \
 
 ### Test Authenticated Request
 ```bash
-curl -X GET http://localhost:8001/api/patients \
+curl -X GET https://apiradio.varnaamedicalbillingsolutions.com/api/patients \
   -H "Authorization: Bearer YOUR_TOKEN_HERE" \
   -b cookies.txt
 ```
 
 ### Test Token Refresh
 ```bash
-curl -X POST http://localhost:8001/auth/refresh \
+curl -X POST https://apiradio.varnaamedicalbillingsolutions.com/auth/refresh \
   -H "Content-Type: application/json" \
   -d '{"refreshToken":"YOUR_REFRESH_TOKEN"}' \
   -b cookies.txt

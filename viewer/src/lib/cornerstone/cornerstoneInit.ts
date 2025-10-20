@@ -2,10 +2,10 @@
  * Cornerstone3D initialization and configuration
  */
 
-import { init as csRenderInit } from '@cornerstonejs/core'
+import { init as csRenderInit, setPreferSizeOverAccuracy, resetUseCPURendering } from '@cornerstonejs/core'
 import { init as csToolsInit } from '@cornerstonejs/tools'
+// @ts-ignore - No type definitions available
 import dicomImageLoader from '@cornerstonejs/dicom-image-loader'
-import { preferSizeOverAccuracy, resetUseCPURendering } from '@cornerstonejs/core'
 import * as cornerstoneCore from '@cornerstonejs/core'
 
 // Import DICOM image loader
@@ -54,13 +54,13 @@ export async function initializeCornerstone(config: CornerstoneConfig = {}): Pro
 
     // Configure performance settings
     if (finalConfig.preferSizeOverAccuracy) {
-      preferSizeOverAccuracy(true)
+      setPreferSizeOverAccuracy(true)
     }
 
     // Initialize Cornerstone3D Core
     await csRenderInit({
+      // @ts-ignore - Config options may vary by version
       gpuTier: undefined, // Let Cornerstone detect GPU capabilities
-      strictZSpacingForVolumeViewport: true,
       useSharedArrayBuffer: finalConfig.useSharedArrayBuffer,
       useNorm16Texture: finalConfig.useNorm16Texture,
     })

@@ -7,7 +7,7 @@ const config = {
   hospitalName: process.env.HOSPITAL_NAME || 'Default Hospital',
   awsApiUrl: process.env.AWS_API_URL || 'https://api.yourdomain.com',
   apiKey: process.env.API_KEY,
-  orthancUrl: process.env.ORTHANC_URL || 'http://localhost:8042',
+  orthancUrl: process.env.ORTHANC_URL || 'http://69.62.70.102:8042',
   orthancUsername: process.env.ORTHANC_USERNAME || 'orthanc',
   orthancPassword: process.env.ORTHANC_PASSWORD || 'orthanc',
   syncInterval: parseInt(process.env.SYNC_INTERVAL) || 60000,

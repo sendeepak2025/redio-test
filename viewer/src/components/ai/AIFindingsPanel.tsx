@@ -324,18 +324,18 @@ export const AIFindingsPanel: React.FC<AIFindingsPanelProps> = ({
                   <Box sx={{ flex: 1 }}>
                     <LinearProgress
                       variant="determinate"
-                      value={result.confidence * 100}
+                      value={(result.confidence || result.overallConfidence) * 100}
                       sx={{
                         height: 4,
                         bgcolor: 'rgba(255, 255, 255, 0.1)',
                         '& .MuiLinearProgress-bar': {
-                          bgcolor: getConfidenceColor(result.confidence),
+                          bgcolor: getConfidenceColor(result.confidence || result.overallConfidence),
                         },
                       }}
                     />
                   </Box>
-                  <Typography variant="caption" color={getConfidenceColor(result.confidence)}>
-                    {Math.round(result.confidence * 100)}%
+                  <Typography variant="caption" color={getConfidenceColor(result.confidence || result.overallConfidence)}>
+                    {Math.round((result.confidence || result.overallConfidence) * 100)}%
                   </Typography>
                 </Box>
               </Box>

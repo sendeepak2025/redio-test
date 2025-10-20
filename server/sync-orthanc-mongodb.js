@@ -187,7 +187,7 @@ async function syncOrthancToMongoDB() {
                 
                 // Orthanc references (PRIMARY)
                 orthancInstanceId: orthancInstanceId,
-                orthancUrl: `${process.env.ORTHANC_URL || 'http://localhost:8042'}/instances/${orthancInstanceId}`,
+                orthancUrl: `${process.env.ORTHANC_URL || 'http://69.62.70.102:8042'}/instances/${orthancInstanceId}`,
                 orthancFrameIndex: frameIdx,
                 orthancStudyId: orthancStudyId,
                 orthancSeriesId: orthancSeriesId,

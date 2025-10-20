@@ -5,7 +5,7 @@
 
 const axios = require('axios');
 
-const BASE_URL = 'http://localhost:8001';
+const BASE_URL = 'https://apiradio.varnaamedicalbillingsolutions.com';
 
 // Test credentials
 const testUsers = [

@@ -4,9 +4,16 @@
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
+    "start:sync": "node start-with-sync.js",
+    "auto-sync": "node auto-sync-simple.js",
     "dev": "nodemon src/index.js",
     "test": "jest --runInBand",
-    "test:security": "jest --testPathPattern=security --runInBand"
+    "test:security": "jest --testPathPattern=security --runInBand",
+    "test-remote": "node test-remote-orthanc-connection.js",
+    "debug-remote": "node debug-remote-orthanc.js",
+    "sync-remote": "node sync-remote-orthanc.js",
+    "watch-remote": "node sync-remote-orthanc.js watch",
+    "watch-remote-fast": "node sync-remote-orthanc.js watch 30"
   },
   "keywords": [],
   "author": "",

@@ -100,7 +100,7 @@ interface ReportTemplate {
 // ---- AXIOS CLIENT (adds token to every request) ----
 const backendUrl =
   (import.meta.env as any)?.VITE_BACKEND_URL 
-  'http://localhost:8001'
+  'https://apiradio.varnaamedicalbillingsolutions.com'
 
 const axiosClient = axios.create({
   baseURL: backendUrl,
@@ -365,7 +365,7 @@ const token = getAuthToken()
         let templatesToUse = standardTemplates
         
         try {
-          const backendUrl = import.meta.env.VITE_BACKEND_URL || process.env.REACT_APP_BACKEND_URL || 'http://localhost:8001'
+          const backendUrl = import.meta.env.VITE_BACKEND_URL || process.env.REACT_APP_BACKEND_URL || 'https://apiradio.varnaamedicalbillingsolutions.com'
           const response = await axiosClient.get(`${backendUrl}/api/reports/templates?active=true`)
           
           if (response.data?.success && response.data.templates?.length > 0) {
@@ -414,7 +414,7 @@ const token = getAuthToken()
       if (!studyData?.studyInstanceUID) return
       
       try {
-        const backendUrl = import.meta.env.VITE_BACKEND_URL || process.env.REACT_APP_BACKEND_URL || 'http://localhost:8001'
+        const backendUrl = import.meta.env.VITE_BACKEND_URL || process.env.REACT_APP_BACKEND_URL || 'https://apiradio.varnaamedicalbillingsolutions.com'
         const response = await axiosClient.get(`${backendUrl}/api/reports/study/${studyData.studyInstanceUID}`)
         
         if (response.data.success) {
@@ -483,7 +483,7 @@ const token = getAuthToken()
         author: 'Current User'
       }
 
-      const backendUrl = import.meta.env.VITE_BACKEND_URL || process.env.REACT_APP_BACKEND_URL || 'http://localhost:8001'
+      const backendUrl = import.meta.env.VITE_BACKEND_URL || process.env.REACT_APP_BACKEND_URL || 'https://apiradio.varnaamedicalbillingsolutions.com'
       await axiosClient.post(`${backendUrl}/api/reports`, reportData)
       
       setSaveStatus('saved')
@@ -544,7 +544,7 @@ const token = getAuthToken()
     try {
       // Try backend AI generation first
       try {
-        const backendUrl = import.meta.env.VITE_BACKEND_URL || process.env.REACT_APP_BACKEND_URL || 'http://localhost:8001'
+        const backendUrl = import.meta.env.VITE_BACKEND_URL || process.env.REACT_APP_BACKEND_URL || 'https://apiradio.varnaamedicalbillingsolutions.com'
         
         const requestData = {
           templateId: selectedTemplate.id,

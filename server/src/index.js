@@ -144,7 +144,7 @@ async function startServer() {
           console.log('✅ Orthanc PACS connection successful');
         } else {
           console.warn('⚠️  Orthanc PACS connection failed - uploads will not work');
-          console.warn('   Please ensure Orthanc is running on:', process.env.ORTHANC_URL || 'http://localhost:8042');
+          console.warn('   Please ensure Orthanc is running on:', process.env.ORTHANC_URL || 'http://69.62.70.102:8042');
         }
       } catch (error) {
         console.warn('⚠️  Could not initialize PACS upload service:', error.message);

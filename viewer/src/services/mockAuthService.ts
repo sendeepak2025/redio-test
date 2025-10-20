@@ -128,7 +128,8 @@ class MockAuthService {
       success: true,
       accessToken: this.accessToken,
       refreshToken: this.refreshTokenValue,
-      user: this.currentUser
+      user: this.currentUser,
+      role: this.currentUser.roles[0] || 'user'
     }
   }
 

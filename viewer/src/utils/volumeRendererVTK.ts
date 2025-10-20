@@ -587,6 +587,7 @@ export class VTKVolumeRenderer {
             console.log('🖱️ Setting up mouse interaction...')
             
             // Create trackball camera interaction style
+            // @ts-ignore - VTK.js types may not be complete
             this.interactorStyle = vtkInteractorStyleTrackballCamera.newInstance()
             this.resources.push(this.interactorStyle)
             
@@ -1076,6 +1077,7 @@ export class VTKVolumeRenderer {
             onProgress?.(0.2)
             
             // Create vtkImageData
+            // @ts-ignore - VTK.js types may not be complete
             this.imageData = vtkImageData.newInstance()
             if (!this.imageData) {
                 throw new Error('Failed to create VTK.js ImageData object')
@@ -1106,6 +1108,7 @@ export class VTKVolumeRenderer {
             onProgress?.(0.6)
             
             // Create data array from Float32Array
+            // @ts-ignore - VTK.js types may not be complete
             const dataArray = vtkDataArray.newInstance({
                 name: 'VolumeData',
                 numberOfComponents: 1,
@@ -1292,7 +1295,9 @@ export class VTKVolumeRenderer {
                 x: sx * factor,
                 y: sy * factor,
                 z: sz * factor
-            }
+            },
+            min: volumeData.min || 0,
+            max: volumeData.max || 1
         }
     }
     
@@ -1412,7 +1417,8 @@ export class VTKVolumeRenderer {
         const context = this.getContext()
         if (context) {
             const maxTextureSize = context.getParameter(context.MAX_TEXTURE_SIZE)
-            const max3DTextureSize = context.getParameter(context.MAX_3D_TEXTURE_SIZE)
+            // @ts-ignore - MAX_3D_TEXTURE_SIZE is WebGL2 constant
+            const max3DTextureSize = context.getParameter(context.MAX_3D_TEXTURE_SIZE || 0x8073)
             
             console.log(`  ℹ️ GPU max 2D texture size: ${maxTextureSize}`)
             console.log(`  ℹ️ GPU max 3D texture size: ${max3DTextureSize}`)
@@ -1475,6 +1481,7 @@ export class VTKVolumeRenderer {
         
         try {
             // Create volume mapper
+            // @ts-ignore - VTK.js types may not be complete
             this.volumeMapper = vtkVolumeMapper.newInstance()
             this.resources.push(this.volumeMapper)
             
@@ -1493,6 +1500,7 @@ export class VTKVolumeRenderer {
             this.volumeMapper.setAutoAdjustSampleDistances(true)
             
             // Create volume actor
+            // @ts-ignore - VTK.js types may not be complete
             this.volume = vtkVolume.newInstance()
             this.resources.push(this.volume)
             
@@ -1741,6 +1749,7 @@ export class VTKVolumeRenderer {
             const volumeProperty = this.volume.getProperty()
             
             // Create opacity (scalar opacity) function
+            // @ts-ignore - VTK.js types may not be complete
             const opacityFunction = vtkPiecewiseFunction.newInstance()
             this.resources.push(opacityFunction)
             
@@ -1751,6 +1760,7 @@ export class VTKVolumeRenderer {
             })
             
             // Create color transfer function
+            // @ts-ignore - VTK.js types may not be complete
             const colorFunction = vtkColorTransferFunction.newInstance()
             this.resources.push(colorFunction)
             

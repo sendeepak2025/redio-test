@@ -14,7 +14,7 @@ const getBackendUrl = (): string => {
   const backendUrl = (import.meta.env && import.meta.env.VITE_BACKEND_URL) ||
     (import.meta.env && import.meta.env.REACT_APP_BACKEND_URL) ||
     (typeof process !== 'undefined' && process.env && process.env.REACT_APP_BACKEND_URL) ||
-    'http://localhost:8001'
+    'https://apiradio.varnaamedicalbillingsolutions.com'
 
   return backendUrl
 }
@@ -298,21 +298,21 @@ export const getOrthancStats = async () => {
  * Get Orthanc instance preview URL
  */
 export const getOrthancInstancePreviewUrl = (instanceId: string): string => {
-  return `http://localhost:8042/instances/${instanceId}/preview`
+  return `http://69.62.70.102:8042/instances/${instanceId}/preview`
 }
 
 /**
  * Get Orthanc instance image URL
  */
 export const getOrthancInstanceImageUrl = (instanceId: string): string => {
-  return `http://localhost:8042/instances/${instanceId}/image-uint8`
+  return `http://69.62.70.102:8042/instances/${instanceId}/image-uint8`
 }
 
 /**
  * Get Orthanc series preview URL
  */
 export const getOrthancSeriesPreviewUrl = (seriesId: string): string => {
-  return `http://localhost:8042/series/${seriesId}/preview`
+  return `http://69.62.70.102:8042/series/${seriesId}/preview`
 }
 
 /**

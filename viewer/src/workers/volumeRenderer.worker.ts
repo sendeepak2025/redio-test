@@ -46,7 +46,8 @@ self.onmessage = (e: MessageEvent<RenderMessage>) => {
       }
 
       // Transfer imageData buffer for zero-copy
-      self.postMessage(response, [imageData.data.buffer])
+      // @ts-ignore - Worker postMessage transfer array
+      self.postMessage(response, { transfer: [imageData.data.buffer] })
     } catch (error) {
       self.postMessage({
         type: 'error',

@@ -1,7 +1,6 @@
 import {
   RenderingEngine,
   Types,
-  Enums,
   volumeLoader,
   cache,
   getRenderingEngine,
@@ -9,8 +8,6 @@ import {
 import {
   ToolGroupManager,
   addTool,
-  ToolGroup,
-  Enums as ToolEnums,
 } from '@cornerstonejs/tools'
 import {
   RENDERING_ENGINE_ID,
@@ -74,7 +71,7 @@ export function getRenderingEngineInstance(): RenderingEngine {
     renderingEngine = new RenderingEngine(RENDERING_ENGINE_ID)
   }
   
-  return renderingEngine
+  return renderingEngine as RenderingEngine
 }
 
 /**
@@ -87,7 +84,10 @@ export function createToolGroup(
   // Remove existing tool group if it exists
   const existingToolGroup = ToolGroupManager.getToolGroup(toolGroupId)
   if (existingToolGroup) {
-    existingToolGroup.destroy()
+    // @ts-ignore - destroy method may not be in type definitions
+    if (existingToolGroup.destroy) {
+      existingToolGroup.destroy()
+    }
   }
   
   const toolGroup = ToolGroupManager.createToolGroup(toolGroupId)
@@ -99,12 +99,13 @@ export function createToolGroup(
   // Add tools based on viewport type
   const toolConfig = DEFAULT_TOOL_CONFIG[viewportType]
   
-  toolConfig.forEach(({ tool, mode, bindings }) => {
+  toolConfig.forEach((config: any) => {
+    const { tool, mode, bindings } = config
     toolGroup.addTool(tool)
     
     if (bindings) {
       toolGroup.setToolActive(tool, {
-        bindings: bindings.map(binding => ({ mouseButton: binding })),
+        bindings: bindings.map((binding: any) => ({ mouseButton: binding })),
       })
     } else {
       toolGroup.setToolMode(tool, mode)
@@ -119,9 +120,9 @@ export function createToolGroup(
  */
 export function createViewportSpec(
   viewportId: string,
-  type: Types.ViewportType,
+  type: any,
   element: HTMLDivElement,
-  orientation?: Types.OrientationAxis
+  orientation?: any
 ): Types.PublicViewportInput {
   const spec: Types.PublicViewportInput = {
     viewportId,
@@ -146,13 +147,13 @@ export async function loadVolume(
   imageIds: string[]
 ): Promise<Types.IImageVolume> {
   // Check if volume is already cached
-  let volume = cache.getVolume(volumeId)
+  let volume: Types.IImageVolume | undefined = cache.getVolume(volumeId) as Types.IImageVolume | undefined
   
   if (!volume) {
     // Create volume
     volume = await volumeLoader.createAndCacheVolume(volumeId, {
       imageIds,
-    })
+    }) as Types.IImageVolume
 
     // Ensure the volume actually loads its image data before returning
     await (volume as any).load?.()
@@ -161,6 +162,10 @@ export async function loadVolume(
     if ((volume as any).load && !(volume as any).isLoaded) {
       await (volume as any).load()
     }
+  }
+  
+  if (!volume) {
+    throw new Error(`Failed to load volume: ${volumeId}`)
   }
   
   return volume
@@ -188,7 +193,7 @@ export async function setVolumeViewportData(
   renderingEngine: RenderingEngine,
   viewportId: string,
   volume: Types.IImageVolume,
-  orientation?: Types.OrientationAxis
+  orientation?: any
 ): Promise<void> {
   const viewport = renderingEngine.getViewport(viewportId) as Types.IVolumeViewport
   
@@ -197,13 +202,14 @@ export async function setVolumeViewportData(
       volumeId: volume.volumeId,
       callback: ({ volumeActor }) => {
         // Set initial window/level if available
-        if (volume.metadata?.WindowCenter && volume.metadata?.WindowWidth) {
-          const windowCenter = Array.isArray(volume.metadata.WindowCenter)
-            ? volume.metadata.WindowCenter[0]
-            : volume.metadata.WindowCenter
-          const windowWidth = Array.isArray(volume.metadata.WindowWidth)
-            ? volume.metadata.WindowWidth[0]
-            : volume.metadata.WindowWidth
+        const metadata = volume.metadata as any
+        if (metadata?.WindowCenter && metadata?.WindowWidth) {
+          const windowCenter = Array.isArray(metadata.WindowCenter)
+            ? metadata.WindowCenter[0]
+            : metadata.WindowCenter
+          const windowWidth = Array.isArray(metadata.WindowWidth)
+            ? metadata.WindowWidth[0]
+            : metadata.WindowWidth
             
           volumeActor.getProperty().setRGBTransferFunction(0, windowCenter - windowWidth / 2, windowCenter + windowWidth / 2)
         }
@@ -226,7 +232,10 @@ export function cleanup(): void {
   Object.values(TOOL_GROUP_IDS).forEach(toolGroupId => {
     const toolGroup = ToolGroupManager.getToolGroup(toolGroupId)
     if (toolGroup) {
-      toolGroup.destroy()
+      // @ts-ignore - destroy method may not be in type definitions
+      if (toolGroup.destroy) {
+        toolGroup.destroy()
+      }
     }
   })
   

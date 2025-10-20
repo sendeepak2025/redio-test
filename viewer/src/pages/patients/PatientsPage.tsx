@@ -230,7 +230,7 @@ const PatientsPage: React.FC = () => {
         formData.append('dicom', file)
       })
 
-      const response = await fetch('http://localhost:8001/api/pacs/upload', {
+      const response = await fetch('https://apiradio.varnaamedicalbillingsolutions.com/api/pacs/upload', {
         method: 'POST',
         body: formData,
       })

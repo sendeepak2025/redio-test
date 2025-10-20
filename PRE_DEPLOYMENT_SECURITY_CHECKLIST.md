@@ -39,7 +39,7 @@
 
 - [ ] **Test admin login after deployment**
   ```bash
-  curl -X POST http://localhost:8001/auth/login \
+  curl -X POST https://apiradio.varnaamedicalbillingsolutions.com/auth/login \
     -H "Content-Type: application/json" \
     -d '{"username":"admin","password":"admin123"}'
   ```
@@ -74,13 +74,13 @@
 
 - [ ] **Test unauthenticated access is blocked**
   ```bash
-  curl http://localhost:8001/api/dicom/studies
+  curl https://apiradio.varnaamedicalbillingsolutions.com/api/dicom/studies
   # Expected: 401 Unauthorized
   ```
 
 - [ ] **Test login endpoint works**
   ```bash
-  curl -X POST http://localhost:8001/auth/login \
+  curl -X POST https://apiradio.varnaamedicalbillingsolutions.com/auth/login \
     -H "Content-Type: application/json" \
     -d '{"username":"admin","password":"admin123"}'
   # Expected: Token returned
@@ -90,14 +90,14 @@
   ```bash
   TOKEN="<token_from_login>"
   curl -H "Authorization: Bearer $TOKEN" \
-    http://localhost:8001/api/dicom/studies
+    https://apiradio.varnaamedicalbillingsolutions.com/api/dicom/studies
   # Expected: Studies returned
   ```
 
 - [ ] **Test invalid token is rejected**
   ```bash
   curl -H "Authorization: Bearer invalid_token" \
-    http://localhost:8001/api/dicom/studies
+    https://apiradio.varnaamedicalbillingsolutions.com/api/dicom/studies
   # Expected: 401 Invalid token
   ```
 
@@ -184,7 +184,7 @@
   ```bash
   # Make 10 rapid login attempts
   for i in {1..10}; do
-    curl -X POST http://localhost:8001/auth/login \
+    curl -X POST https://apiradio.varnaamedicalbillingsolutions.com/auth/login \
       -H "Content-Type: application/json" \
       -d '{"username":"test","password":"test"}'
   done
@@ -224,12 +224,12 @@
 
 - [ ] **Health check endpoint accessible**
   ```bash
-  curl http://localhost:8001/health
+  curl https://apiradio.varnaamedicalbillingsolutions.com/health
   ```
 
 - [ ] **Prometheus metrics enabled**
   ```bash
-  curl http://localhost:8001/metrics
+  curl https://apiradio.varnaamedicalbillingsolutions.com/metrics
   ```
 
 - [ ] **Grafana dashboards configured**
@@ -279,7 +279,7 @@
   # Test PACS upload with token
   curl -H "Authorization: Bearer $TOKEN" \
     -F "dicom=@test.dcm" \
-    http://localhost:8001/api/pacs/upload
+    https://apiradio.varnaamedicalbillingsolutions.com/api/pacs/upload
   ```
 
 - [ ] **Orthanc webhook security configured**
@@ -335,7 +335,7 @@
 
 - [ ] **Security headers configured**
   ```bash
-  curl -I http://localhost:8001 | grep -E "X-Frame-Options|X-Content-Type-Options|Strict-Transport-Security"
+  curl -I https://apiradio.varnaamedicalbillingsolutions.com | grep -E "X-Frame-Options|X-Content-Type-Options|Strict-Transport-Security"
   ```
 
 ### 14. Performance

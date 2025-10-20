@@ -146,28 +146,30 @@ export class WebGLVolumeRenderer {
   loadVolume(volume: VolumeDataWebGL) {
     if (!this.gl) return
     
-    // Create 3D texture
-    this.volumeTexture = this.gl.createTexture()
-    this.gl.bindTexture(this.gl.TEXTURE_3D, this.volumeTexture)
+    // Create 3D texture (WebGL2 feature)
+    // @ts-ignore - Using WebGL2 features
+    const gl2 = this.gl as WebGL2RenderingContext
+    this.volumeTexture = gl2.createTexture()
+    gl2.bindTexture(gl2.TEXTURE_3D, this.volumeTexture)
     
-    this.gl.texImage3D(
-      this.gl.TEXTURE_3D,
+    gl2.texImage3D(
+      gl2.TEXTURE_3D,
       0,
-      this.gl.R8,
+      gl2.R8,
       volume.dimensions.width,
       volume.dimensions.height,
       volume.dimensions.depth,
       0,
-      this.gl.RED,
-      this.gl.UNSIGNED_BYTE,
+      gl2.RED,
+      gl2.UNSIGNED_BYTE,
       volume.data
     )
     
-    this.gl.texParameteri(this.gl.TEXTURE_3D, this.gl.TEXTURE_MIN_FILTER, this.gl.LINEAR)
-    this.gl.texParameteri(this.gl.TEXTURE_3D, this.gl.TEXTURE_MAG_FILTER, this.gl.LINEAR)
-    this.gl.texParameteri(this.gl.TEXTURE_3D, this.gl.TEXTURE_WRAP_S, this.gl.CLAMP_TO_EDGE)
-    this.gl.texParameteri(this.gl.TEXTURE_3D, this.gl.TEXTURE_WRAP_T, this.gl.CLAMP_TO_EDGE)
-    this.gl.texParameteri(this.gl.TEXTURE_3D, this.gl.TEXTURE_WRAP_R, this.gl.CLAMP_TO_EDGE)
+    gl2.texParameteri(gl2.TEXTURE_3D, gl2.TEXTURE_MIN_FILTER, gl2.LINEAR)
+    gl2.texParameteri(gl2.TEXTURE_3D, gl2.TEXTURE_MAG_FILTER, gl2.LINEAR)
+    gl2.texParameteri(gl2.TEXTURE_3D, gl2.TEXTURE_WRAP_S, gl2.CLAMP_TO_EDGE)
+    gl2.texParameteri(gl2.TEXTURE_3D, gl2.TEXTURE_WRAP_T, gl2.CLAMP_TO_EDGE)
+    gl2.texParameteri(gl2.TEXTURE_3D, gl2.TEXTURE_WRAP_R, gl2.CLAMP_TO_EDGE)
   }
   
   render(camera: any, renderMode: 'mip' | 'volume' | 'isosurface') {

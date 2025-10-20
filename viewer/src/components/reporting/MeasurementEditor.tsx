@@ -79,8 +79,12 @@ export const MeasurementEditor: React.FC<MeasurementEditorProps> = ({
   const [value, setValue] = useState(measurement?.value || 0)
   const [unit, setUnit] = useState(measurement?.unit || 'mm')
   const [method, setMethod] = useState(measurement?.method || '')
-  const [normalRange, setNormalRange] = useState(measurement?.normalRange || { min: undefined, max: undefined })
+  const [normalRange, setNormalRange] = useState<{ min?: number; max?: number } | string>(
+    typeof measurement?.normalRange === 'string' ? measurement.normalRange : { min: undefined, max: undefined }
+  )
   const [location, setLocation] = useState<AnatomicalLocation>(measurement?.location || {
+    code: '',
+    display: '',
     bodyPart: '',
     laterality: undefined,
     region: ''
@@ -91,13 +95,18 @@ export const MeasurementEditor: React.FC<MeasurementEditorProps> = ({
       return
     }
 
+    const normalRangeValue = typeof normalRange === 'object' && (normalRange.min !== undefined || normalRange.max !== undefined)
+      ? `${normalRange.min || ''}-${normalRange.max || ''}`
+      : normalRange
+
     const newMeasurement: ReportMeasurement = {
       id: measurement?.id || Date.now().toString(),
       name,
+      type: name,
       value,
       unit,
       method: method || undefined,
-      normalRange: (normalRange.min !== undefined || normalRange.max !== undefined) ? normalRange : undefined,
+      normalRange: normalRangeValue || undefined,
       location: location.bodyPart ? location : undefined,
       aiGenerated: measurement?.aiGenerated || false
     }
@@ -114,13 +123,19 @@ export const MeasurementEditor: React.FC<MeasurementEditorProps> = ({
 
   const handleNormalRangeChange = (field: 'min' | 'max', value: string) => {
     const numValue = value ? parseFloat(value) : undefined
-    setNormalRange(prev => ({
-      ...prev,
-      [field]: numValue
-    }))
+    setNormalRange(prev => {
+      if (typeof prev === 'string') {
+        return { [field]: numValue }
+      }
+      return {
+        ...prev,
+        [field]: numValue
+      }
+    })
   }
 
   const isValueNormal = () => {
+    if (typeof normalRange === 'string') return null
     if (!normalRange.min && !normalRange.max) return null
     
     if (normalRange.min && value < normalRange.min) return false
@@ -201,7 +216,7 @@ export const MeasurementEditor: React.FC<MeasurementEditorProps> = ({
             fullWidth
             type="number"
             label="Minimum Normal Value"
-            value={normalRange.min || ''}
+            value={typeof normalRange === 'object' ? (normalRange.min || '') : ''}
             onChange={(e) => handleNormalRangeChange('min', e.target.value)}
             inputProps={{ step: 0.1 }}
           />
@@ -212,7 +227,7 @@ export const MeasurementEditor: React.FC<MeasurementEditorProps> = ({
             fullWidth
             type="number"
             label="Maximum Normal Value"
-            value={normalRange.max || ''}
+            value={typeof normalRange === 'object' ? (normalRange.max || '') : ''}
             onChange={(e) => handleNormalRangeChange('max', e.target.value)}
             inputProps={{ step: 0.1 }}
           />

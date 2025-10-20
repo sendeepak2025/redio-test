@@ -426,7 +426,9 @@ export function useVolumeRenderer({
           // Limit cache size
           if (renderCacheRef.current.size > 20) {
             const firstKey = renderCacheRef.current.keys().next().value
-            renderCacheRef.current.delete(firstKey)
+            if (firstKey !== undefined) {
+              renderCacheRef.current.delete(firstKey)
+            }
           }
         }
         
@@ -510,8 +512,8 @@ export function useVolumeRenderer({
     const tf = TRANSFER_FUNCTIONS[preset]
     setTransferFunction(tf)
     
-    if (rendererType === 'vtk' && vtkRendererRef.current) {
-      vtkRendererRef.current.setTransferFunction(tf)
+    if (rendererType === 'vtk' && vtkRendererRef.current && volumeData) {
+      vtkRendererRef.current.setTransferFunction(tf, volumeData.min || 0, volumeData.max || 1)
     }
   }, [rendererType])
   

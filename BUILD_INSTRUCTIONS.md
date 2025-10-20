@@ -75,7 +75,7 @@ EMAIL_FROM=noreply@medical-imaging.local
 EMAIL_TO=admin@medical-imaging.local
 
 # Orthanc PACS
-ORTHANC_URL=http://localhost:8042
+ORTHANC_URL=http://69.62.70.102:8042
 ORTHANC_USERNAME=orthanc
 ORTHANC_PASSWORD=orthanc
 
@@ -112,7 +112,7 @@ serve -s dist -l 3000
 1. Open IIS Manager
 2. Add new website
 3. Point to `production/viewer/dist`
-4. Configure reverse proxy for `/api` to `http://localhost:8001`
+4. Configure reverse proxy for `/api` to `https://apiradio.varnaamedicalbillingsolutions.com`
 
 **Option C: Using nginx (Linux)**
 ```bash
@@ -129,10 +129,10 @@ sudo systemctl reload nginx
 ### 1. Test Backend
 ```powershell
 # Check if server is running
-curl http://localhost:8001/health
+curl https://apiradio.varnaamedicalbillingsolutions.com/health
 
 # Check API
-curl http://localhost:8001/api/monitoring/system-health
+curl https://apiradio.varnaamedicalbillingsolutions.com/api/monitoring/system-health
 ```
 
 ### 2. Test Frontend

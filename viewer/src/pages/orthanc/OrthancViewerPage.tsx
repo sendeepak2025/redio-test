@@ -175,11 +175,11 @@ const OrthancViewerPage: React.FC = () => {
 
   const openInStoneViewer = (orthancStudyId: string) => {
     // Try Stone viewer first, fallback to basic Orthanc viewer
-    const stoneUrl = `http://localhost:8042/stone-webviewer/index.html?study=${orthancStudyId}`
-    const basicUrl = `http://localhost:8042/app/explorer.html#study?uuid=${orthancStudyId}`
+    const stoneUrl = `http://69.62.70.102:8042/stone-webviewer/index.html?study=${orthancStudyId}`
+    const basicUrl = `http://69.62.70.102:8042/app/explorer.html#study?uuid=${orthancStudyId}`
     
     // Try to detect if Stone viewer is available
-    fetch('http://localhost:8042/stone-webviewer/')
+    fetch('http://69.62.70.102:8042/stone-webviewer/')
       .then(() => {
         // Stone viewer is available
         window.open(stoneUrl, '_blank', 'width=1400,height=900')
@@ -234,13 +234,13 @@ const OrthancViewerPage: React.FC = () => {
               </Button>
               <Button
                 variant="outlined"
-                onClick={() => window.open('http://localhost:8042/app/explorer.html', '_blank')}
+                onClick={() => window.open('http://69.62.70.102:8042/app/explorer.html', '_blank')}
               >
                 Orthanc UI
               </Button>
               <Button
                 variant="outlined"
-                onClick={() => window.open('http://localhost:8001/pacs-upload', '_blank')}
+                onClick={() => window.open('https://apiradio.varnaamedicalbillingsolutions.com/pacs-upload', '_blank')}
               >
                 Upload Files
               </Button>

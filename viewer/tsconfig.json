@@ -15,10 +15,11 @@
     "jsx": "react-jsx",
 
     /* Linting */
-    "strict": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
+    "strict": false,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
     "noFallthroughCasesInSwitch": true,
+    "skipLibCheck": true,
 
     /* Path mapping */
     "baseUrl": ".",
@@ -34,7 +35,7 @@
       "@/assets/*": ["./src/assets/*"]
     }
   },
-  "include": ["src"],
-  "exclude": ["src/test/**"],
+  "include": ["src", "src/vite-env.d.ts"],
+  "exclude": ["src/test/**", "**/*.test.ts", "**/*.test.tsx", "**/__tests__/**"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

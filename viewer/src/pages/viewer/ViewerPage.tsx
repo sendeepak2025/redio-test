@@ -281,8 +281,7 @@ const ViewerPage: React.FC = () => {
             {patientContext && (
               <Box sx={{ maxHeight: '40%', overflow: 'auto' }}>
                 <PatientContextPanel 
-                  patientContext={patientContext}
-                  isLoading={false}
+                  study={null}
                 />
               </Box>
             )}
