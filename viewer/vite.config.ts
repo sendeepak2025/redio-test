@@ -39,6 +39,7 @@ export default defineConfig({
       'localhost',
       '127.0.0.1',
       '0.0.0.0',
+      "http://69.62.70.102",
       'dicom-review.preview.emergentagent.com',
       '.emergentagent.com',
       '.preview.emergentagent.com'
