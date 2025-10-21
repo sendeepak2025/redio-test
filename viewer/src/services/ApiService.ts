@@ -271,7 +271,7 @@ export const uploadPacsStudy = async (files: File[]) => {
   const url = `${BACKEND_URL}/api/pacs/upload`
   const formData = new FormData()
   
-  // Append all files
+  // Append all files with 'dicom' field name (required by backend)
   files.forEach((file) => {
     formData.append('dicom', file)
   })
@@ -280,6 +280,7 @@ export const uploadPacsStudy = async (files: File[]) => {
 
   console.log('📤 Uploading PACS study:', {
     fileCount: files.length,
+    files: files.map(f => ({ name: f.name, size: f.size, type: f.type })),
     totalSize: files.reduce((sum, f) => sum + f.size, 0)
   })
 
@@ -292,6 +293,17 @@ export const uploadPacsStudy = async (files: File[]) => {
       ...(token && { Authorization: `Bearer ${token}` }),
     },
   })
+  
+  if (!response.ok) {
+    const errorText = await response.text()
+    console.error('❌ PACS upload failed:', errorText)
+    try {
+      const errorJson = JSON.parse(errorText)
+      throw new Error(errorJson.message || 'Upload failed')
+    } catch {
+      throw new Error(`Upload failed: ${response.status} ${response.statusText}`)
+    }
+  }
   
   const result = await response.json()
   console.log('📥 PACS upload response:', result)
