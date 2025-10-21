@@ -599,6 +599,7 @@ export default {
   getPatientStudies,
   createPatient,
   uploadDicomFileForPatient,
+  uploadPacsStudy,
   // Orthanc Viewer API
   getOrthancStudies,
   searchOrthancStudies,
