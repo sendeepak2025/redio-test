@@ -125,15 +125,21 @@ async function handleUpload(req, res) {
     let orthancUploadResult;
     try {
       console.log(`   Buffer size: ${buffer.length} bytes`);
+      console.log(`   File mimetype: ${req.file.mimetype}`);
+      console.log(`   File name: ${req.file.originalname}`);
       orthancUploadResult = await orthancService.uploadDicomFile(buffer);
       console.log(`✅ Uploaded to Orthanc:`, orthancUploadResult);
     } catch (orthancError) {
       console.error('❌ Failed to upload to Orthanc:', orthancError.message);
+      console.error('   Orthanc error details:', JSON.stringify(orthancError.response?.data || 'No details'));
+      console.error('   Orthanc status:', orthancError.response?.status);
+      console.error('   Orthanc headers:', JSON.stringify(orthancError.response?.headers || {}));
       return res.status(500).json({
         success: false,
         message: `Failed to upload to Orthanc PACS: ${orthancError.message}`,
         error: orthancError.message,
-        details: orthancError.response?.data || null
+        details: orthancError.response?.data || null,
+        orthancStatus: orthancError.response?.status
       });
     }
 
