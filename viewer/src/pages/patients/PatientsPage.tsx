@@ -361,18 +361,8 @@ const PatientsPage: React.FC = () => {
       setPacsUploading(true)
       setError(null)
 
-      // Upload files to PACS server
-      const formData = new FormData()
-      pacsFiles.forEach((file) => {
-        formData.append('dicom', file)
-      })
-
-      const response = await fetch('http://localhost:8001/api/pacs/upload', {
-        method: 'POST',
-        body: formData,
-      })
-
-      const result = await response.json()
+      // Upload files to PACS server using proper API service
+      const result = await uploadPacsStudy(pacsFiles)
 
       if (!result.success) {
         throw new Error(result.message || 'PACS upload failed')
