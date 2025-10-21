@@ -28,6 +28,7 @@ const usersRoutes = require('./users');
 const superAdminRoutes = require('./superadmin');
 const publicRoutes = require('./public');
 const exportRoutes = require('./export');
+const followUpRoutes = require('./follow-ups');
 
 const router = express.Router();
 
@@ -170,5 +171,8 @@ router.use('/api/public', publicRoutes);
 
 // Export API - Data export with DICOM files
 router.use('/api/export', exportRoutes);
+
+// Follow-up Management API - Patient follow-up tracking and automation
+router.use('/api/follow-ups', followUpRoutes);
 
 module.exports = router;

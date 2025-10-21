@@ -96,7 +96,7 @@ npm start
 ### On Startup:
 ```
 Unified Orthanc Service initialized: {
-  url: 'http://69.62.70.102:8042',
+  url: 'http://localhost:8042',
   timeout: '60000ms',
   uploadTimeout: '300000ms'
 }
@@ -106,7 +106,7 @@ Unified Orthanc Service initialized: {
 ```
 📤 Uploading DICOM to Orthanc...
    Buffer size: 47456789 bytes (45.23 MB)
-   Uploading to Orthanc at: http://69.62.70.102:8042
+   Uploading to Orthanc at: http://localhost:8042
 📤 Uploading DICOM file to Orthanc (45.23 MB)...
 ✅ Upload successful: abc123-def456
 💾 Upserting 96 instance records to MongoDB...
@@ -132,7 +132,7 @@ curl -X POST http://localhost:8001/api/dicom/upload \
 
 ### 2. Test Orthanc Connection
 ```bash
-curl -u orthanc:orthanc_secure_2024 http://69.62.70.102:8042/system
+curl -u orthanc:orthanc_secure_2024 http://localhost:8042/system
 ```
 
 ### 3. Check Server Health

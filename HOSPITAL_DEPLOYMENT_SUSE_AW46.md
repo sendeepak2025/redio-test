@@ -266,7 +266,7 @@ EOF
 sudo docker compose up -d
 
 # Verify Orthanc is running
-curl http://69.62.70.102:8042/system
+curl http://localhost:8042/system
 ```
 
 ### Step 6: Deploy Your Application
@@ -315,7 +315,7 @@ MONGODB_URI=mongodb://localhost:27017/hospital_dicom
 JWT_SECRET=CHANGE_THIS_TO_RANDOM_256_BIT_STRING
 
 # Orthanc Configuration
-ORTHANC_URL=http://69.62.70.102:8042
+ORTHANC_URL=http://localhost:8042
 ORTHANC_USERNAME=orthanc
 ORTHANC_PASSWORD=orthanc123
 
@@ -595,7 +595,7 @@ tee /opt/dicom-viewer/scripts/sync-from-aw.sh > /dev/null <<'EOF'
 #!/bin/bash
 
 # Query AW Server for studies from last 24 hours
-curl -X POST http://69.62.70.102:8042/modalities/AW_SERVER/query \
+curl -X POST http://localhost:8042/modalities/AW_SERVER/query \
   -H "Content-Type: application/json" \
   -u orthanc:orthanc123 \
   -d '{
@@ -606,7 +606,7 @@ curl -X POST http://69.62.70.102:8042/modalities/AW_SERVER/query \
   }'
 
 # Retrieve all matching studies
-curl -X POST http://69.62.70.102:8042/modalities/AW_SERVER/move \
+curl -X POST http://localhost:8042/modalities/AW_SERVER/move \
   -H "Content-Type: application/json" \
   -u orthanc:orthanc123 \
   -d '{
@@ -761,7 +761,7 @@ curl -s http://localhost:8001/api/health | grep -q "healthy" && echo "✓ Health
 
 # Check Orthanc API
 echo "6. Orthanc API:"
-curl -s -u orthanc:orthanc123 http://69.62.70.102:8042/system | grep -q "Version" && echo "✓ Healthy" || echo "✗ Unhealthy"
+curl -s -u orthanc:orthanc123 http://localhost:8042/system | grep -q "Version" && echo "✓ Healthy" || echo "✗ Unhealthy"
 
 # Check DICOM connectivity to AW Server
 echo "7. DICOM Connection to AW Server:"
@@ -868,10 +868,10 @@ sudo systemctl restart nginx
 
 ```bash
 # Check Orthanc storage
-curl -u orthanc:orthanc123 http://69.62.70.102:8042/statistics
+curl -u orthanc:orthanc123 http://localhost:8042/statistics
 
 # Check if studies exist
-curl -u orthanc:orthanc123 http://69.62.70.102:8042/studies
+curl -u orthanc:orthanc123 http://localhost:8042/studies
 
 # Check browser console for errors
 # Open browser DevTools (F12) and check Console tab

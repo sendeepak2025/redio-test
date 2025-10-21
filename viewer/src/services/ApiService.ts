@@ -358,21 +358,21 @@ export const getOrthancStats = async () => {
  * Get Orthanc instance preview URL
  */
 export const getOrthancInstancePreviewUrl = (instanceId: string): string => {
-  return `http://69.62.70.102:8042/instances/${instanceId}/preview`
+  return `http://localhost:8042/instances/${instanceId}/preview`
 }
 
 /**
  * Get Orthanc instance image URL
  */
 export const getOrthancInstanceImageUrl = (instanceId: string): string => {
-  return `http://69.62.70.102:8042/instances/${instanceId}/image-uint8`
+  return `http://localhost:8042/instances/${instanceId}/image-uint8`
 }
 
 /**
  * Get Orthanc series preview URL
  */
 export const getOrthancSeriesPreviewUrl = (seriesId: string): string => {
-  return `http://69.62.70.102:8042/series/${seriesId}/preview`
+  return `http://localhost:8042/series/${seriesId}/preview`
 }
 
 /**

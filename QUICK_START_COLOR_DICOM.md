@@ -82,7 +82,7 @@ Expected for color Doppler:
 
 ### Check 2: Is Orthanc accessible?
 ```bash
-curl -u orthanc:orthanc_secure_2024 http://69.62.70.102:8042/system
+curl -u orthanc:orthanc_secure_2024 http://localhost:8042/system
 ```
 
 Should return Orthanc system info.

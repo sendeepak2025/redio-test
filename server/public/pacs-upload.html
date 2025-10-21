@@ -261,7 +261,7 @@
                 } else {
                     statusEl.className = 'connection-status disconnected';
                     statusText.innerHTML = '❌ PACS Disconnected - Check Orthanc server<br>' +
-                        '<small>Make sure Orthanc is running on ' + (result.data?.orthancUrl || 'http://69.62.70.102:8042') + '</small>';
+                        '<small>Make sure Orthanc is running on ' + (result.data?.orthancUrl || 'http://localhost:8042') + '</small>';
                 }
             } catch (error) {
                 const statusEl = document.getElementById('connectionStatus');

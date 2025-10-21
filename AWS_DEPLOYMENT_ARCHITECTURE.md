@@ -156,7 +156,7 @@ class PACSBridgeAgent {
       hospitalName: config.hospitalName,
       awsApiUrl: config.awsApiUrl,
       apiKey: config.apiKey,
-      orthancUrl: config.orthancUrl || 'http://69.62.70.102:8042',
+      orthancUrl: config.orthancUrl || 'http://localhost:8042',
       orthancUsername: config.orthancUsername || 'orthanc',
       orthancPassword: config.orthancPassword || 'orthanc',
       syncInterval: config.syncInterval || 60000, // 1 minute
@@ -398,7 +398,7 @@ const config = {
   hospitalName: process.env.HOSPITAL_NAME || 'Hospital A',
   awsApiUrl: process.env.AWS_API_URL || 'https://api.yourdomain.com',
   apiKey: process.env.API_KEY || 'your-api-key',
-  orthancUrl: process.env.ORTHANC_URL || 'http://69.62.70.102:8042',
+  orthancUrl: process.env.ORTHANC_URL || 'http://localhost:8042',
   orthancUsername: process.env.ORTHANC_USERNAME || 'orthanc',
   orthancPassword: process.env.ORTHANC_PASSWORD || 'orthanc',
   syncInterval: 60000, // 1 minute
@@ -424,7 +424,7 @@ HOSPITAL_ID=hospital-a
 HOSPITAL_NAME=Hospital A Main Campus
 AWS_API_URL=https://api.yourdomain.com
 API_KEY=secure-api-key-here
-ORTHANC_URL=http://69.62.70.102:8042
+ORTHANC_URL=http://localhost:8042
 ORTHANC_USERNAME=orthanc
 ORTHANC_PASSWORD=orthanc
 WATCH_FOLDER=/path/to/dicom/folder
@@ -768,7 +768,7 @@ User Request → AWS API → Check Tenant → Query MongoDB
   "hospitalName": "Hospital A Main Campus",
   "awsApiUrl": "https://api.yourdomain.com",
   "apiKey": "secure-api-key",
-  "orthancUrl": "http://69.62.70.102:8042",
+  "orthancUrl": "http://localhost:8042",
   "syncInterval": 60000,
   "features": {
     "autoSync": true,

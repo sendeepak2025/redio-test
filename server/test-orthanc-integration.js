@@ -11,7 +11,7 @@ const path = require('path');
 // Load environment variables
 require('dotenv').config({ path: path.join(__dirname, '../server/.env') });
 
-const ORTHANC_URL = process.env.ORTHANC_URL || 'http://69.62.70.102:8042';
+const ORTHANC_URL = process.env.ORTHANC_URL || 'http://localhost:8042';
 const ORTHANC_USERNAME = process.env.ORTHANC_USERNAME || 'orthanc';
 const ORTHANC_PASSWORD = process.env.ORTHANC_PASSWORD || 'orthanc';
 

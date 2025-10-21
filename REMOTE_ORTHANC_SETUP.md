@@ -3,7 +3,7 @@
 ## Remote Server Details
 
 ```
-URL: http://69.62.70.102:8042
+URL: http://localhost:8042
 Username: orthanc
 Password: orthanc_secure_2024
 ```
@@ -39,7 +39,7 @@ Yeh har 30 seconds mein check karega.
 
 ## How It Works
 
-1. **Remote Orthanc Server**: http://69.62.70.102:8042
+1. **Remote Orthanc Server**: http://localhost:8042
    - Jab bhi koi naya DICOM study upload hoga
 
 2. **Sync Script**: `server/sync-remote-orthanc.js`
@@ -77,7 +77,7 @@ Edit `server/.env.remote-orthanc` to change settings:
 
 ```env
 # Remote Orthanc Configuration
-REMOTE_ORTHANC_URL=http://69.62.70.102:8042
+REMOTE_ORTHANC_URL=http://localhost:8042
 REMOTE_ORTHANC_USERNAME=orthanc
 REMOTE_ORTHANC_PASSWORD=orthanc_secure_2024
 
@@ -110,7 +110,7 @@ After sync, studies will be available in:
 ### Connection Failed
 ```bash
 # Test remote Orthanc connection
-curl -u orthanc:orthanc_secure_2024 http://69.62.70.102:8042/system
+curl -u orthanc:orthanc_secure_2024 http://localhost:8042/system
 ```
 
 ### MongoDB Not Connected
@@ -183,7 +183,7 @@ Test the sync manually:
 ```bash
 # 1. Upload a DICOM file to remote Orthanc
 curl -u orthanc:orthanc_secure_2024 \
-  -X POST http://69.62.70.102:8042/instances \
+  -X POST http://localhost:8042/instances \
   --data-binary @test.dcm
 
 # 2. Run sync
@@ -208,7 +208,7 @@ npm run watch-remote
 Output:
 ```
 🔄 Starting Remote Orthanc Sync...
-📡 Remote Server: http://69.62.70.102:8042
+📡 Remote Server: http://localhost:8042
 
 📊 Found 5 studies on remote Orthanc
 

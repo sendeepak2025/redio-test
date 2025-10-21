@@ -6,7 +6,7 @@
 const axios = require('axios');
 
 const REMOTE_ORTHANC = {
-  url: 'http://69.62.70.102:8042',
+  url: 'http://localhost:8042',
   username: 'orthanc',
   password: 'orthanc_secure_2024'
 };

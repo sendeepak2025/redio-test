@@ -7,7 +7,7 @@ const Instance = require('./src/models/Instance');
 const axios = require('axios');
 
 const BACKEND_DIR = path.resolve(__dirname, 'backend');
-const ORTHANC_URL = process.env.ORTHANC_URL || 'http://69.62.70.102:8042';
+const ORTHANC_URL = process.env.ORTHANC_URL || 'http://localhost:8042';
 const ORTHANC_AUTH = {
   username: process.env.ORTHANC_USERNAME || 'orthanc',
   password: process.env.ORTHANC_PASSWORD || 'orthanc'

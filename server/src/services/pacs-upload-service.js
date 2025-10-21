@@ -11,7 +11,7 @@ const { getMetricsCollector } = require('./metrics-collector');
 class PacsUploadService {
   constructor(config = {}) {
     this.config = {
-      orthancUrl: config.orthancUrl || process.env.ORTHANC_URL || 'http://69.62.70.102:8042',
+      orthancUrl: config.orthancUrl || process.env.ORTHANC_URL || 'http://localhost:8042',
       orthancUsername: config.orthancUsername || process.env.ORTHANC_USERNAME || 'orthanc',
       orthancPassword: config.orthancPassword || process.env.ORTHANC_PASSWORD || 'orthanc',
       timeout: config.timeout || 60000, // 60 seconds for large files

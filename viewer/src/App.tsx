@@ -23,6 +23,7 @@ import SuperAdminDashboard from './pages/superadmin/SuperAdminDashboard'
 import SettingsPage from './pages/settings/SettingsPage'
 import ProfilePage from './pages/profile/ProfilePage'
 import BillingPage from './pages/billing/BillingPage'
+import FollowUpPage from './pages/followup/FollowUpPage'
 
 // Simple pages without complex dependencies
 const LoginPage = React.lazy(() => import('./pages/auth/LoginPage'))
@@ -154,6 +155,17 @@ function App() {
               <SimpleProtectedRoute>
                 <MainLayout>
                   <WorklistPage />
+                </MainLayout>
+              </SimpleProtectedRoute>
+            }
+          />
+          
+          <Route
+            path="/followups"
+            element={
+              <SimpleProtectedRoute>
+                <MainLayout>
+                  <FollowUpPage />
                 </MainLayout>
               </SimpleProtectedRoute>
             }

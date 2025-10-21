@@ -51,7 +51,7 @@ sudo tee /opt/dicom-watcher/watch-and-send.sh > /dev/null << 'EOF'
 
 # Configuration - CHANGE THESE VALUES
 WATCH_DIR="/data/dicom/studies"  # ← Change this to your DICOM directory
-ORTHANC_URL="http://69.62.70.102:8042"
+ORTHANC_URL="http://localhost:8042"
 ORTHANC_USER="orthanc"
 ORTHANC_PASS="orthanc_secure_2024"
 
@@ -186,7 +186,7 @@ sudo journalctl -u dicom-watcher -f
 
 ```bash
 # Check if file received
-curl -u orthanc:orthanc_secure_2024 http://69.62.70.102:8042/studies
+curl -u orthanc:orthanc_secure_2024 http://localhost:8042/studies
 ```
 
 ### Test 4: Check Your Database
@@ -270,7 +270,7 @@ inotifywait -m /data/dicom/studies
 
 # Test manual send
 curl -u orthanc:orthanc_secure_2024 \
-  -X POST http://69.62.70.102:8042/instances \
+  -X POST http://localhost:8042/instances \
   --data-binary @/path/to/test.dcm
 ```
 
@@ -281,7 +281,7 @@ curl -u orthanc:orthanc_secure_2024 \
 ping 69.62.70.102
 
 # Test Orthanc
-curl -u orthanc:orthanc_secure_2024 http://69.62.70.102:8042/system
+curl -u orthanc:orthanc_secure_2024 http://localhost:8042/system
 
 # Check firewall
 sudo firewall-cmd --list-all

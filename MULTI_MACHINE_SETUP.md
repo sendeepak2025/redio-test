@@ -220,8 +220,8 @@ echo ""
 
 # Check Orthanc server
 echo "📡 Central Orthanc Server:"
-if curl -s -u orthanc:orthanc_secure_2024 http://69.62.70.102:8042/system > /dev/null; then
-    STUDIES=$(curl -s -u orthanc:orthanc_secure_2024 http://69.62.70.102:8042/statistics | grep -o '"CountStudies":[0-9]*' | cut -d: -f2)
+if curl -s -u orthanc:orthanc_secure_2024 http://localhost:8042/system > /dev/null; then
+    STUDIES=$(curl -s -u orthanc:orthanc_secure_2024 http://localhost:8042/statistics | grep -o '"CountStudies":[0-9]*' | cut -d: -f2)
     echo "   ✅ Online - Total Studies: $STUDIES"
 else
     echo "   ❌ Offline"
@@ -360,17 +360,17 @@ If handling 50+ machines:
 ```bash
 # On Machine 1
 curl -u orthanc:orthanc_secure_2024 \
-  -X POST http://69.62.70.102:8042/instances \
+  -X POST http://localhost:8042/instances \
   --data-binary @test1.dcm &
 
 # On Machine 2
 curl -u orthanc:orthanc_secure_2024 \
-  -X POST http://69.62.70.102:8042/instances \
+  -X POST http://localhost:8042/instances \
   --data-binary @test2.dcm &
 
 # On Machine 3
 curl -u orthanc:orthanc_secure_2024 \
-  -X POST http://69.62.70.102:8042/instances \
+  -X POST http://localhost:8042/instances \
   --data-binary @test3.dcm &
 
 wait
@@ -383,7 +383,7 @@ echo "All uploads complete!"
 # Send 100 files simultaneously
 for i in {1..100}; do
   curl -u orthanc:orthanc_secure_2024 \
-    -X POST http://69.62.70.102:8042/instances \
+    -X POST http://localhost:8042/instances \
     --data-binary @test.dcm &
 done
 wait
@@ -394,7 +394,7 @@ wait
 ```bash
 # Check Orthanc statistics
 curl -u orthanc:orthanc_secure_2024 \
-  http://69.62.70.102:8042/statistics | jq
+  http://localhost:8042/statistics | jq
 ```
 
 ---

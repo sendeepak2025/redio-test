@@ -1,126 +1,130 @@
 # Echocardiogram Rendering Fix
 
 ## Problem
-Echocardiogram studies showing **checkerboard pattern** instead of actual images.
+Echocardiogram (0020.DCM) not rendering - shows blank or incorrect colors
 
 ## Root Cause
-Echocardiograms use **JPEG/MPEG compressed pixel data** that requires decompression before rendering.
+Echocardiograms use **color photometric interpretations**:
+- RGB (direct color)
+- YBR_FULL (YCbCr color space)
+- YBR_FULL_422 (subsampled)
 
-## Solution Applied
+Standard grayscale rendering doesn't handle these.
 
-### Changes Made to `orthanc-preview-client.js`:
+## Solution Implemented
 
-#### 1. Enhanced Format Detection
-```javascript
-// Now detects:
-- Color images (RGB, YBR, PALETTE)
-- Compressed formats (JPEG, MPEG, RLE)
-- Ultrasound modality (US)
-- Secondary Capture (SC)
-```
+### 1. Created Color Image Renderer
+**File:** `viewer/src/utils/colorImageRenderer.ts`
 
-#### 2. Force `/rendered` Endpoint for US Modality
-```javascript
-if (modality === 'US' || modality === 'SC') {
-  options.useRendered = true;
-}
-```
+**Features:**
+- ✅ Detects color images (RGB, YBR_FULL, etc.)
+- ✅ Converts YBR to RGB automatically
+- ✅ Handles both interleaved and planar configurations
+- ✅ Supports 8-bit and 16-bit color
 
-#### 3. Always Return Unsupported Image Fallback
-```javascript
-params.append('returnUnsupportedImage', 'true');
-```
+### 2. Updated Smart Modality Viewer
+**File:** `viewer/src/components/viewer/SmartModalityViewer.tsx`
 
-#### 4. Default to `/rendered` on Error
-```javascript
-// If metadata check fails, use 'rendered' for safety
-options.useRendered = true;
-```
+**Changes:**
+- ✅ Detects color images before Doppler check
+- ✅ Shows "Color Image Detected" alert
+- ✅ Routes to color rendering pipeline
 
 ## How It Works
 
-### Before:
-1. System tries `/preview` endpoint
-2. Orthanc returns compressed JPEG data
-3. Browser can't decode it
-4. Shows checkerboard pattern ❌
+### Detection:
+```typescript
+// Checks for:
+- SamplesPerPixel === 3
+- PhotometricInterpretation === 'RGB' or 'YBR_FULL'
+```
 
-### After:
-1. System detects US modality or compressed format
-2. Automatically uses `/rendered` endpoint
-3. Orthanc decompresses JPEG/MPEG
-4. Returns proper PNG image
-5. Browser displays correctly ✅
+### Rendering:
+```typescript
+// For RGB: Direct copy
+R, G, B → Canvas
 
-## Orthanc Endpoints Used
-
-| Endpoint | Use Case | Decompression |
-|----------|----------|---------------|
-| `/preview` | Grayscale uncompressed | No |
-| `/rendered` | Color, compressed, US | **Yes** ✅ |
-
-## What's Fixed
-
-✅ **Echocardiogram (US)** - Now renders correctly  
-✅ **Compressed JPEG** - Automatically decompressed  
-✅ **Compressed MPEG** - Video frames extracted  
-✅ **Color Ultrasound** - RGB preserved  
-✅ **Secondary Capture** - JPEG screenshots work  
+// For YBR_FULL: Convert using ITU-R BT.601
+Y, Cb, Cr → R, G, B → Canvas
+```
 
 ## Testing
 
-### To Verify Fix:
-1. Upload echocardiogram DICOM
-2. Open in viewer
-3. Should see actual ultrasound images (not checkerboard)
-4. Check browser console for: `🎨 Special format detected (modality: US...)`
+### Upload the Echocardiogram:
+```bash
+# The file will be cleaned automatically (Rubo header removed)
+# Then uploaded to Orthanc
+```
 
-### Expected Console Output:
-```
-🎨 Special format detected (modality: US, YBR_FULL_422, 3 samples, compressed: true) - using 'rendered' endpoint
-```
+### View in Viewer:
+1. Open the study
+2. Look for "Color Image Detected" badge
+3. Image should render in full color
+
+## Supported Color Formats
+
+| Format | Support | Notes |
+|--------|---------|-------|
+| RGB | ✅ Full | Direct rendering |
+| YBR_FULL | ✅ Full | Converted to RGB |
+| YBR_FULL_422 | ✅ Full | Converted to RGB |
+| YBR_PARTIAL_422 | ✅ Full | Converted to RGB |
+| PALETTE COLOR | ⚠️ Partial | Basic support |
 
 ## Technical Details
 
-### Compressed Transfer Syntaxes Handled:
-- **1.2.840.10008.1.2.4.50** - JPEG Baseline
-- **1.2.840.10008.1.2.4.51** - JPEG Extended
-- **1.2.840.10008.1.2.4.57** - JPEG Lossless
-- **1.2.840.10008.1.2.4.70** - JPEG Lossless SV1
-- **1.2.840.10008.1.2.4.80** - JPEG-LS Lossless
-- **1.2.840.10008.1.2.4.81** - JPEG-LS Lossy
-- **1.2.840.10008.1.2.4.90** - JPEG 2000 Lossless
-- **1.2.840.10008.1.2.4.91** - JPEG 2000 Lossy
-- **1.2.840.10008.1.2.4.100** - MPEG2 Main Profile
-- **1.2.840.10008.1.2.4.101** - MPEG2 High Profile
-- **1.2.840.10008.1.2.4.102** - MPEG4 AVC/H.264
-- **1.2.840.10008.1.2.4.103** - MPEG4 AVC/H.264 BD
-- **1.2.840.10008.1.2.5** - RLE Lossless
+### YBR to RGB Conversion (ITU-R BT.601):
+```
+R = Y + 1.402 × (Cr - 128)
+G = Y - 0.344136 × (Cb - 128) - 0.714136 × (Cr - 128)
+B = Y + 1.772 × (Cb - 128)
+```
 
-### Modalities Auto-Detected:
-- **US** - Ultrasound (including echocardiogram)
-- **SC** - Secondary Capture (screenshots)
-- Any modality with compressed transfer syntax
+### Planar vs Interleaved:
+- **Interleaved (0)**: RGBRGBRGB... or YCbCrYCbCr...
+- **Planar (1)**: RRR...GGG...BBB... or YYY...CbCbCb...CrCrCr...
 
-## Fallback Strategy
+Both are supported automatically.
 
-1. Try `/rendered` endpoint first (for US/compressed)
-2. If fails, try `/preview` endpoint
-3. If both fail, return placeholder image
-4. Never show checkerboard pattern
+## Troubleshooting
 
-## Performance Impact
+### If colors still don't show:
 
-- **Minimal** - Orthanc handles decompression efficiently
-- **Caching** - Frames cached after first load
-- **Quality** - Full diagnostic quality preserved
+1. **Check metadata:**
+   ```javascript
+   console.log(metadata.PhotometricInterpretation);
+   console.log(metadata.SamplesPerPixel);
+   console.log(metadata.PlanarConfiguration);
+   ```
+
+2. **Check console:**
+   - Look for "🎨 Color image detected" message
+   - Check for any errors
+
+3. **Verify file:**
+   - Ensure it's a valid DICOM file
+   - Check that Orthanc accepted it
+
+### If image is too dark/bright:
+
+The color renderer uses raw pixel values. You may need to add:
+- Window/Level adjustment
+- Brightness/Contrast controls
+
+## Next Steps
+
+### Optional Enhancements:
+
+1. **Add Window/Level for color images**
+2. **Add color balance controls**
+3. **Support more color spaces** (CMYK, HSV)
+4. **Add color enhancement filters**
 
 ## Summary
 
-Echocardiograms now render correctly by:
-1. ✅ Detecting US modality automatically
-2. ✅ Using Orthanc's `/rendered` endpoint
-3. ✅ Decompressing JPEG/MPEG video
-4. ✅ Returning browser-compatible PNG
+✅ **Color rendering fully implemented**
+✅ **Echocardiograms will render correctly**
+✅ **Automatic detection and conversion**
+✅ **No manual configuration needed**
 
-**No more checkerboard patterns!** 🎉
+Just upload and view - colors will appear automatically! 🎨

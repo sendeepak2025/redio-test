@@ -47,7 +47,7 @@ describe('OrthancPreviewClient', () => {
     it('should initialize with default configuration', () => {
       const defaultClient = new OrthancPreviewClient();
       
-      expect(defaultClient.config.orthancUrl).toBe('http://69.62.70.102:8042');
+      expect(defaultClient.config.orthancUrl).toBe('http://localhost:8042');
       expect(defaultClient.config.orthancUsername).toBe('orthanc');
       expect(defaultClient.config.orthancPassword).toBe('orthanc');
       expect(defaultClient.config.timeout).toBe(30000);

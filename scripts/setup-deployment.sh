@@ -172,7 +172,7 @@ services:
     networks:
       - orthanc-bridge-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://69.62.70.102:8042/system"]
+      test: ["CMD", "curl", "-f", "http://localhost:8042/system"]
       interval: 30s
       timeout: 10s
       retries: 3

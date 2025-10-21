@@ -18,7 +18,7 @@ This will test if the server can connect to Orthanc PACS.
 
 ### 3. Check Orthanc Status
 ```bash
-curl http://69.62.70.102:8042/system
+curl http://localhost:8042/system
 ```
 
 This should return Orthanc system information if it's running.
@@ -33,7 +33,7 @@ This should return Orthanc system information if it's running.
 1. Check your `.env` file in `node-server/` directory
 2. Add or verify:
    ```env
-   ORTHANC_URL=http://69.62.70.102:8042
+   ORTHANC_URL=http://localhost:8042
    ORTHANC_USERNAME=orthanc
    ORTHANC_PASSWORD=orthanc
    ```
@@ -51,7 +51,7 @@ This should return Orthanc system information if it's running.
    
 2. Verify Orthanc is running:
    ```bash
-   curl http://69.62.70.102:8042/system
+   curl http://localhost:8042/system
    ```
 
 3. Check if port 8042 is accessible:
@@ -78,7 +78,7 @@ This should return Orthanc system information if it's running.
 
 2. Check Orthanc storage:
    ```bash
-   curl http://69.62.70.102:8042/statistics
+   curl http://localhost:8042/statistics
    ```
 
 3. Verify credentials in `.env` match Orthanc configuration
@@ -105,7 +105,7 @@ This should return Orthanc system information if it's running.
 
 3. Verify Orthanc has the instances:
    ```bash
-   curl http://69.62.70.102:8042/studies
+   curl http://localhost:8042/studies
    ```
 
 ### Issue 5: "MongoDB connection error"
@@ -207,7 +207,7 @@ If issues persist:
    curl http://localhost:8001/api/pacs/upload/test > connection-test.json
    
    # Orthanc status
-   curl http://69.62.70.102:8042/system > orthanc-status.json
+   curl http://localhost:8042/system > orthanc-status.json
    ```
 
 2. **Check server logs** for error messages

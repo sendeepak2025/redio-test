@@ -20,6 +20,7 @@ import {
   Person,
   Analytics,
   People,
+  CalendarToday,
 } from '@mui/icons-material'
 import { useAppSelector } from '../../store/hooks'
 import { selectSidebarOpen, selectSidebarWidth } from '../../store/slices/uiSlice'
@@ -53,6 +54,13 @@ const navigationItems: NavigationItem[] = [
     label: 'Patients',
     icon: <People />,
     path: '/patients',
+    permission: 'studies:read',
+  },
+  {
+    id: 'followups',
+    label: 'Follow-ups',
+    icon: <CalendarToday />,
+    path: '/followups',
     permission: 'studies:read',
   },
   {

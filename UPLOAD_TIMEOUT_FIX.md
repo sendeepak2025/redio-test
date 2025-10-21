@@ -46,7 +46,7 @@ Added detailed logging:
 ```
 📤 Uploading DICOM file to Orthanc (45.23 MB)...
    Buffer size: 47456789 bytes (45.23 MB)
-   Uploading to Orthanc at: http://69.62.70.102:8042
+   Uploading to Orthanc at: http://localhost:8042
 ✅ Upload successful: abc123-def456-ghi789
 ```
 
@@ -142,7 +142,7 @@ ORTHANC_UPLOAD_TIMEOUT=300000   # 5 minutes for uploads
 Check server startup logs:
 ```
 Unified Orthanc Service initialized: {
-  url: 'http://69.62.70.102:8042',
+  url: 'http://localhost:8042',
   timeout: '60000ms',
   uploadTimeout: '300000ms'
 }
@@ -179,7 +179,7 @@ ORTHANC_UPLOAD_TIMEOUT=180000  # 3 minutes
 
 #### 1. Check Orthanc Server
 ```bash
-curl -u orthanc:orthanc_secure_2024 http://69.62.70.102:8042/system
+curl -u orthanc:orthanc_secure_2024 http://localhost:8042/system
 ```
 Should return Orthanc system info quickly.
 
@@ -187,7 +187,7 @@ Should return Orthanc system info quickly.
 ```bash
 # Test upload speed to Orthanc
 time curl -u orthanc:orthanc_secure_2024 \
-  -X POST http://69.62.70.102:8042/instances \
+  -X POST http://localhost:8042/instances \
   --data-binary @test.dcm
 ```
 
@@ -216,7 +216,7 @@ Orthanc needs enough disk space to store the file.
 #### Check Orthanc Connection
 ```bash
 # From your server
-curl http://69.62.70.102:8042/system
+curl http://localhost:8042/system
 ```
 
 #### Check Firewall
@@ -240,7 +240,7 @@ tail -f /var/log/orthanc/orthanc.log
 #### Check Study in Orthanc
 ```bash
 curl -u orthanc:orthanc_secure_2024 \
-  http://69.62.70.102:8042/studies
+  http://localhost:8042/studies
 ```
 
 ## Performance Optimization
@@ -266,7 +266,7 @@ Upload directly to Orthanc, bypassing Node.js:
 const formData = new FormData();
 formData.append('file', file);
 
-fetch('http://69.62.70.102:8042/instances', {
+fetch('http://localhost:8042/instances', {
   method: 'POST',
   body: file,
   headers: {
@@ -282,7 +282,7 @@ fetch('http://69.62.70.102:8042/instances', {
 ```
 📤 Uploading DICOM file to Orthanc (45.23 MB)...
    Buffer size: 47456789 bytes (45.23 MB)
-   Uploading to Orthanc at: http://69.62.70.102:8042
+   Uploading to Orthanc at: http://localhost:8042
 ✅ Upload successful: abc123-def456
 💾 Upserting 96 instance records to MongoDB...
 ✅ Instances upserted

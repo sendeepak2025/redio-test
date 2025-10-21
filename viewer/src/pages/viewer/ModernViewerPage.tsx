@@ -22,6 +22,7 @@ import { MedicalImageViewer } from '../../components/viewer/MedicalImageViewer'
 import Cornerstone3DViewer from '../../components/viewer/Cornerstone3DViewer'
 import { VolumeViewer3D } from '../../components/viewer/VolumeViewer3D'
 import { ReportingInterface } from '../../components/reporting/ReportingInterface'
+import SmartModalityViewer from '../../components/viewer/SmartModalityViewer'
 import AIAnalysisPanel from '../../components/ai/AIAnalysisPanel'
 import SimilarImagesPanel from '../../components/ai/SimilarImagesPanel'
 import ApiService from '../../services/ApiService'
@@ -383,10 +384,19 @@ const ModernViewerPage: React.FC = () => {
                         alignItems: 'center',
                         justifyContent: 'center',
                     }}>
-                        <ActiveViewerComponent
-                            studyInstanceUID={studyInstanceUID}
-                            studyData={studyData}
-                        />
+                        <SmartModalityViewer
+                            instanceId={studyData?.series?.[0]?.instances?.[0]?.orthancInstanceId || ''}
+                            metadata={{
+                                Modality: studyData?.modality,
+                                NumberOfFrames: studyData?.series?.[0]?.numberOfInstances,
+                                ...studyData
+                            }}
+                        >
+                            <ActiveViewerComponent
+                                studyInstanceUID={studyInstanceUID}
+                                studyData={studyData}
+                            />
+                        </SmartModalityViewer>
 
                         {/* Floating Toolbar */}
                         <Fade in={showToolbar}>

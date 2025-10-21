@@ -48,6 +48,7 @@ import { MedicalImageViewer } from '../../components/viewer/MedicalImageViewer'
 import Cornerstone3DViewer from '../../components/viewer/Cornerstone3DViewer'
 import { VolumeViewer3D } from '../../components/viewer/VolumeViewer3D'
 import { ReportingInterface } from '../../components/reporting/ReportingInterface'
+import SmartModalityViewer from '../../components/viewer/SmartModalityViewer'
 import EnhancedReportingInterface from '../../components/reporting/EnhancedReportingInterface'
 import { PatientContextPanel } from '../../components/worklist/PatientContextPanel'
 import AIAnalysisPanel from '../../components/ai/AIAnalysisPanel'
@@ -541,21 +542,39 @@ const ViewerPage: React.FC = () => {
                       totalFrames={studyData.series?.[0]?.numberOfInstances || 1}
                     />
                   ) : viewerType === 'cornerstone3d' ? (
-                    <Cornerstone3DViewer
-                      studyInstanceUID={studyData.studyInstanceUID}
-                      seriesInstanceUID={studyData.series?.[0]?.seriesInstanceUID}
-                      sopInstanceUIDs={studyData.series?.[0]?.instances?.map((instance: any) => instance.sopInstanceUID) || []}
-                      dicomWebBaseUrl="/api/dicom"
-                      mode="stack"
-                    />
+                    <SmartModalityViewer
+                      instanceId={studyData.series?.[0]?.instances?.[0]?.orthancInstanceId || ''}
+                      metadata={{
+                        Modality: studyData.modality,
+                        NumberOfFrames: studyData.series?.[0]?.numberOfInstances,
+                        ...studyData
+                      }}
+                    >
+                      <Cornerstone3DViewer
+                        studyInstanceUID={studyData.studyInstanceUID}
+                        seriesInstanceUID={studyData.series?.[0]?.seriesInstanceUID}
+                        sopInstanceUIDs={studyData.series?.[0]?.instances?.map((instance: any) => instance.sopInstanceUID) || []}
+                        dicomWebBaseUrl="/api/dicom"
+                        mode="stack"
+                      />
+                    </SmartModalityViewer>
                   ) : (
-                    <MedicalImageViewer
-                      studyInstanceUID={studyData.studyInstanceUID}
-                      seriesInstanceUID={studyData.series?.[0]?.seriesInstanceUID || 'default-series'}
-                      sopInstanceUIDs={studyData.series?.[0]?.instances?.map((instance: any) => instance.sopInstanceUID) || []}
-                      isLoading={isLoading}
-                      error={error || undefined}
-                    />
+                    <SmartModalityViewer
+                      instanceId={studyData.series?.[0]?.instances?.[0]?.orthancInstanceId || ''}
+                      metadata={{
+                        Modality: studyData.modality,
+                        NumberOfFrames: studyData.series?.[0]?.numberOfInstances,
+                        ...studyData
+                      }}
+                    >
+                      <MedicalImageViewer
+                        studyInstanceUID={studyData.studyInstanceUID}
+                        seriesInstanceUID={studyData.series?.[0]?.seriesInstanceUID || 'default-series'}
+                        sopInstanceUIDs={studyData.series?.[0]?.instances?.map((instance: any) => instance.sopInstanceUID) || []}
+                        isLoading={isLoading}
+                        error={error || undefined}
+                      />
+                    </SmartModalityViewer>
                   )
                 ) : (
                   <Box sx={{ 

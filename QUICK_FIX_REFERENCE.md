@@ -42,12 +42,12 @@ npm start
 
 **Test connection:**
 ```bash
-curl -u orthanc:orthanc_secure_2024 http://69.62.70.102:8042/system
+curl -u orthanc:orthanc_secure_2024 http://localhost:8042/system
 ```
 
 **Check `.env`:**
 ```env
-ORTHANC_URL=http://69.62.70.102:8042
+ORTHANC_URL=http://localhost:8042
 ORTHANC_USERNAME=orthanc
 ORTHANC_PASSWORD=orthanc_secure_2024
 ```
@@ -101,7 +101,7 @@ curl -X POST http://localhost:8001/api/dicom/upload \
 ### Test Orthanc:
 ```bash
 curl -u orthanc:orthanc_secure_2024 \
-  http://69.62.70.102:8042/system
+  http://localhost:8042/system
 ```
 
 ### Test Server:

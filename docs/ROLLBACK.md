@@ -33,7 +33,7 @@ docker-compose scale dicom-bridge=0
 curl http://localhost:3001/health/detailed
 
 # Verify Orthanc webhook disabled
-curl -u orthanc:orthanc_secure_2024 http://69.62.70.102:8042/tools/configuration
+curl -u orthanc:orthanc_secure_2024 http://localhost:8042/tools/configuration
 ```
 
 ## Complete System Removal

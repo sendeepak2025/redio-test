@@ -29,7 +29,7 @@ sudo mkdir -p /opt/dicom-watcher /var/log/dicom-watcher && echo "✅ Folders cre
 sudo tee /opt/dicom-watcher/watch-and-send.sh > /dev/null << 'EOF'
 #!/bin/bash
 WATCH_DIR="/data/dicom/studies"
-ORTHANC_URL="http://69.62.70.102:8042"
+ORTHANC_URL="http://localhost:8042"
 ORTHANC_USER="orthanc"
 ORTHANC_PASS="orthanc_secure_2024"
 PROCESSED_LOG="/var/log/dicom-watcher/processed.log"
@@ -162,7 +162,7 @@ sudo journalctl -u dicom-watcher -n 50
 sudo grep "WATCH_DIR" /opt/dicom-watcher/watch-and-send.sh
 
 # Test cloud connection
-curl -u orthanc:orthanc_secure_2024 http://69.62.70.102:8042/system
+curl -u orthanc:orthanc_secure_2024 http://localhost:8042/system
 ```
 
 ### Change Watched Folder?

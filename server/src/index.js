@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
+const cron = require('node-cron');
 const { connectMongo } = require('./config/mongo');
 const routes = require('./routes');
 const cookieParser = require('cookie-parser');
@@ -14,6 +15,7 @@ const { getMetricsCollector } = require('./services/metrics-collector');
 const { getHealthChecker } = require('./services/health-checker');
 const { getAlertManager } = require('./services/alert-manager');
 const AdminActionLogger = require('./services/admin-action-logger');
+const followUpAutomation = require('./services/followup-automation');
 
 const app = express();
 app.use(cors());
@@ -144,7 +146,7 @@ async function startServer() {
           console.log('✅ Orthanc PACS connection successful');
         } else {
           console.warn('⚠️  Orthanc PACS connection failed - uploads will not work');
-          console.warn('   Please ensure Orthanc is running on:', process.env.ORTHANC_URL || 'http://69.62.70.102:8042');
+          console.warn('   Please ensure Orthanc is running on:', process.env.ORTHANC_URL || 'http://localhost:8042');
         }
       } catch (error) {
         console.warn('⚠️  Could not initialize PACS upload service:', error.message);
@@ -223,6 +225,39 @@ async function startServer() {
     // Make admin action logger available globally
     app.locals.adminActionLogger = adminActionLogger;
     console.log('Admin action logger initialized');
+
+    // Initialize follow-up automation cron jobs
+    if (process.env.ENABLE_FOLLOWUP_AUTOMATION !== 'false') {
+      console.log('Initializing follow-up automation...');
+      
+      // Check overdue follow-ups daily at 8 AM
+      cron.schedule('0 8 * * *', async () => {
+        console.log('Running overdue follow-ups check...');
+        try {
+          const overdueFollowUps = await followUpAutomation.checkOverdueFollowUps();
+          console.log(`Found ${overdueFollowUps.length} overdue follow-ups`);
+        } catch (error) {
+          console.error('Error checking overdue follow-ups:', error);
+        }
+      });
+
+      // Send upcoming reminders daily at 9 AM
+      cron.schedule('0 9 * * *', async () => {
+        console.log('Sending upcoming follow-up reminders...');
+        try {
+          const upcomingFollowUps = await followUpAutomation.sendUpcomingReminders(7);
+          console.log(`Sent reminders for ${upcomingFollowUps.length} upcoming follow-ups`);
+        } catch (error) {
+          console.error('Error sending reminders:', error);
+        }
+      });
+
+      console.log('Follow-up automation cron jobs scheduled');
+      console.log('- Overdue check: Daily at 8:00 AM');
+      console.log('- Upcoming reminders: Daily at 9:00 AM');
+    } else {
+      console.log('Follow-up automation disabled');
+    }
 
     // Routes
     app.use('/', routes);

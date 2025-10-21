@@ -136,8 +136,8 @@ mongosh
   "message": "Cannot connect to Orthanc server",
   "error": "ECONNREFUSED",
   "code": "ECONNREFUSED",
-  "hint": "Check if Orthanc is running at http://69.62.70.102:8042",
-  "orthancUrl": "http://69.62.70.102:8042",
+  "hint": "Check if Orthanc is running at http://localhost:8042",
+  "orthancUrl": "http://localhost:8042",
   "timestamp": "2024-01-21T10:30:00.000Z"
 }
 ```
@@ -178,7 +178,7 @@ Expected: 500 with "Database not connected"
 ✅ MongoDB connected
 📤 Uploading DICOM to Orthanc...
    Buffer size: 2621440 bytes (2.50 MB)
-   Uploading to Orthanc at: http://69.62.70.102:8042
+   Uploading to Orthanc at: http://localhost:8042
 ✅ Uploaded to Orthanc: { ID: 'abc123', ... }
 📊 StudyUID: 1.2.3.4.5, Frames: 100
 ✅ Study upserted
