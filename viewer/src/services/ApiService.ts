@@ -264,6 +264,41 @@ export const uploadDicomFileForPatient = async (file: File, patientID: string, p
 }
 
 /**
+ * Upload DICOM study files to PACS server
+ * Supports multiple files for batch upload
+ */
+export const uploadPacsStudy = async (files: File[]) => {
+  const url = `${BACKEND_URL}/api/pacs/upload`
+  const formData = new FormData()
+  
+  // Append all files
+  files.forEach((file) => {
+    formData.append('dicom', file)
+  })
+  
+  const token = getAuthToken()
+
+  console.log('📤 Uploading PACS study:', {
+    fileCount: files.length,
+    totalSize: files.reduce((sum, f) => sum + f.size, 0)
+  })
+
+  const response = await fetch(url, {
+    method: 'POST',
+    body: formData,
+    credentials: 'include',
+    headers: {
+      // Don't set Content-Type - let browser set it with boundary
+      ...(token && { Authorization: `Bearer ${token}` }),
+    },
+  })
+  
+  const result = await response.json()
+  console.log('📥 PACS upload response:', result)
+  return result
+}
+
+/**
  * Orthanc Viewer API - Direct access to Orthanc data
  */
 
