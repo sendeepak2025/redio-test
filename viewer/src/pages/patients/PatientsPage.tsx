@@ -67,6 +67,7 @@ import {
   getStudies,
   createPatient,
   uploadDicomFileForPatient,
+  uploadPacsStudy,
   exportPatientData,
   exportStudyData,
 } from "../../services/ApiService"
