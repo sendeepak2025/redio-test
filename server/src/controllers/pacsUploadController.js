@@ -104,18 +104,34 @@ class PacsUploadController {
         });
       }
 
+      console.log('📥 Received upload request:', {
+        hasFile: !!req.file,
+        headers: req.headers,
+        bodyKeys: Object.keys(req.body || {}),
+        fileFieldName: req.file ? 'dicom' : 'missing'
+      });
+
       if (!req.file) {
         timer.end({ status: 'error' });
         return res.status(400).json({
           success: false,
           message: 'No DICOM file provided',
-          hint: 'Please upload a DICOM file (.dcm, .dicom, or .dic)'
+          hint: 'Please upload a DICOM file (.dcm, .dicom, or .dic)',
+          debug: {
+            receivedFields: Object.keys(req.body || {}),
+            expectedField: 'dicom'
+          }
         });
       }
 
-      const { buffer, originalname, size } = req.file;
+      const { buffer, originalname, size, mimetype } = req.file;
       
-      console.log(`Processing PACS upload: ${originalname} (${(size / 1024 / 1024).toFixed(2)} MB)`);
+      console.log(`📤 Processing PACS upload:`, {
+        filename: originalname,
+        size: `${(size / 1024 / 1024).toFixed(2)} MB`,
+        mimetype: mimetype,
+        bufferLength: buffer.length
+      });
       
       // Upload and process through PACS
       const result = await this.pacsUploadService.uploadAndProcess(
@@ -135,6 +151,11 @@ class PacsUploadController {
       if (result.success) {
         // Record successful upload
         this.metricsCollector.recordInstanceProcessing('pacs_upload', 'success');
+        
+        console.log('✅ PACS upload successful:', {
+          studyUID: result.studyInstanceUID,
+          frames: result.totalFrames
+        });
         
         res.json({
           success: true,
@@ -161,6 +182,8 @@ class PacsUploadController {
         // Record failed upload
         this.metricsCollector.recordInstanceProcessing('pacs_upload', 'error');
         
+        console.error('❌ PACS upload failed:', result.error);
+        
         res.status(500).json({
           success: false,
           message: result.message,
@@ -170,14 +193,15 @@ class PacsUploadController {
       
     } catch (error) {
       timer.end({ status: 'error' });
-      console.error('PACS upload controller error:', error.message);
+      console.error('❌ PACS upload controller error:', error);
       
       this.metricsCollector.recordInstanceProcessing('pacs_upload', 'error');
       
       res.status(500).json({
         success: false,
         message: 'Upload processing failed',
-        error: error.message
+        error: error.message,
+        hint: 'Check if the file is a valid DICOM format'
       });
     }
   }
