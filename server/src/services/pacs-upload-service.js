@@ -129,6 +129,16 @@ class PacsUploadService {
     try {
       console.log(`Uploading ${filename} to Orthanc PACS (${fileBuffer.length} bytes)...`);
       
+      // Check if buffer looks like DICOM (starts with DICM magic number after 128 byte preamble)
+      const isDicomLike = fileBuffer.length > 132 && 
+                          fileBuffer[128] === 0x44 && // 'D'
+                          fileBuffer[129] === 0x49 && // 'I'
+                          fileBuffer[130] === 0x43 && // 'C'
+                          fileBuffer[131] === 0x4D;   // 'M'
+      
+      console.log(`DICOM validation: ${isDicomLike ? '✅ Has DICM header' : '⚠️  No DICM header (might still be valid)'}`);
+      console.log(`First 16 bytes: ${fileBuffer.slice(0, 16).toString('hex')}`);
+      
       // Orthanc expects raw DICOM data, not multipart form data
       // POST the raw buffer directly to /instances endpoint
       const response = await this.axiosInstance.post('/instances', fileBuffer, {
@@ -158,14 +168,22 @@ class PacsUploadService {
       };
       
     } catch (error) {
-      console.error(`Failed to upload ${filename} to Orthanc:`, error.response?.data || error.message);
+      console.error(`❌ Failed to upload ${filename} to Orthanc`);
+      console.error(`   Error message: ${error.message}`);
+      console.error(`   HTTP status: ${error.response?.status}`);
+      console.error(`   Orthanc response: ${JSON.stringify(error.response?.data)}`);
+      console.error(`   Response headers: ${JSON.stringify(error.response?.headers)}`);
       
       // Provide more detailed error information
       let errorMessage = `Orthanc upload failed: ${error.message}`;
       if (error.response) {
         errorMessage += ` (HTTP ${error.response.status})`;
         if (error.response.data) {
-          errorMessage += ` - ${JSON.stringify(error.response.data)}`;
+          if (typeof error.response.data === 'object') {
+            errorMessage += ` - ${JSON.stringify(error.response.data)}`;
+          } else {
+            errorMessage += ` - ${error.response.data}`;
+          }
         }
       }
       
