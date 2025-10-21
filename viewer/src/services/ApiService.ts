@@ -14,7 +14,7 @@ const getBackendUrl = (): string => {
   const backendUrl = (import.meta.env && import.meta.env.VITE_BACKEND_URL) ||
     (import.meta.env && import.meta.env.REACT_APP_BACKEND_URL) ||
     (typeof process !== 'undefined' && process.env && process.env.REACT_APP_BACKEND_URL) ||
-    'https://apiradio.varnaamedicalbillingsolutions.com'
+    'http://localhost:8001'
 
   return backendUrl
 }
@@ -234,20 +234,33 @@ export const createPatient = async (patient: { patientID: string; patientName?: 
 export const uploadDicomFileForPatient = async (file: File, patientID: string, patientName?: string) => {
   const url = `${BACKEND_URL}/api/dicom/upload`
   const formData = new FormData()
-  formData.append('file', file)
+  
+  // Append file with explicit filename to preserve extension
+  formData.append('file', file, file.name)
   formData.append('patientID', patientID)
   if (patientName) formData.append('patientName', patientName)
+  
   const token = getAuthToken()
+
+  console.log('📤 Uploading DICOM file:', {
+    name: file.name,
+    size: file.size,
+    type: file.type
+  })
 
   const response = await fetch(url, {
     method: 'POST',
     body: formData,
-      credentials: 'include',
+    credentials: 'include',
     headers: {
+      // Don't set Content-Type - let browser set it with boundary
       ...(token && { Authorization: `Bearer ${token}` }),
     },
   })
-  return response.json()
+  
+  const result = await response.json()
+  console.log('📥 Upload response:', result)
+  return result
 }
 
 /**
@@ -572,4 +585,77 @@ export default {
   exportPatientData,
   exportStudyData,
   exportAllData,
+  // Follow-up API
+  getFollowUps: async (filters = {}) => {
+    const response = await apiCall('/api/follow-ups', {
+      method: 'GET',
+    })
+    return response.json()
+  },
+  getFollowUp: async (id: string) => {
+    const response = await apiCall(`/api/follow-ups/${id}`)
+    return response.json()
+  },
+  createFollowUp: async (data: any) => {
+    const response = await apiCall('/api/follow-ups', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+    return response.json()
+  },
+  updateFollowUp: async (id: string, data: any) => {
+    const response = await apiCall(`/api/follow-ups/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    })
+    return response.json()
+  },
+  deleteFollowUp: async (id: string) => {
+    const response = await apiCall(`/api/follow-ups/${id}`, {
+      method: 'DELETE',
+    })
+    return response.json()
+  },
+  scheduleFollowUp: async (id: string, scheduledDate: string) => {
+    const response = await apiCall(`/api/follow-ups/${id}/schedule`, {
+      method: 'POST',
+      body: JSON.stringify({ scheduledDate }),
+    })
+    return response.json()
+  },
+  completeFollowUp: async (id: string) => {
+    const response = await apiCall(`/api/follow-ups/${id}/complete`, {
+      method: 'POST',
+    })
+    return response.json()
+  },
+  addFollowUpNote: async (id: string, text: string) => {
+    const response = await apiCall(`/api/follow-ups/${id}/notes`, {
+      method: 'POST',
+      body: JSON.stringify({ text }),
+    })
+    return response.json()
+  },
+  getOverdueFollowUps: async () => {
+    const response = await apiCall('/api/follow-ups/overdue')
+    return response.json()
+  },
+  getUpcomingFollowUps: async (days = 7) => {
+    const response = await apiCall(`/api/follow-ups/upcoming?days=${days}`)
+    return response.json()
+  },
+  getFollowUpStatistics: async () => {
+    const response = await apiCall('/api/follow-ups/statistics')
+    return response.json()
+  },
+  generateFollowUpFromReport: async (reportId: string) => {
+    const response = await apiCall(`/api/follow-ups/generate/${reportId}`, {
+      method: 'POST',
+    })
+    return response.json()
+  },
+  getFollowUpRecommendations: async (reportId: string) => {
+    const response = await apiCall(`/api/follow-ups/recommendations/${reportId}`)
+    return response.json()
+  },
 }

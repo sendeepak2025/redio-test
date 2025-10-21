@@ -46,7 +46,7 @@ export default defineConfig({
     ],
     proxy: {
       '/api': {
-        target: 'https://apiradio.varnaamedicalbillingsolutions.com',
+        target: 'http://localhost:8001',
         changeOrigin: true,
         secure: false,
         ws: true,
@@ -63,7 +63,7 @@ export default defineConfig({
         }
       },
       '/auth': {
-        target: 'https://apiradio.varnaamedicalbillingsolutions.com',
+        target: 'http://localhost:8001',
         changeOrigin: true,
         secure: false,
       },

@@ -2,7 +2,7 @@
 # Test login for both superadmin and hospital users
 
 Write-Host "🚀 Testing Login System" -ForegroundColor Cyan
-Write-Host "Server: https://apiradio.varnaamedicalbillingsolutions.com" -ForegroundColor Gray
+Write-Host "Server: http://localhost:8001" -ForegroundColor Gray
 Write-Host "=" * 60
 
 # Test 1: Super Admin Login (Username)
@@ -13,7 +13,7 @@ $body1 = @{
 } | ConvertTo-Json
 
 try {
-    $response1 = Invoke-RestMethod -Uri "https://apiradio.varnaamedicalbillingsolutions.com/auth/login" `
+    $response1 = Invoke-RestMethod -Uri "http://localhost:8001/auth/login" `
         -Method Post `
         -ContentType "application/json" `
         -Body $body1
@@ -39,7 +39,7 @@ $body2 = @{
 } | ConvertTo-Json
 
 try {
-    $response2 = Invoke-RestMethod -Uri "https://apiradio.varnaamedicalbillingsolutions.com/auth/login" `
+    $response2 = Invoke-RestMethod -Uri "http://localhost:8001/auth/login" `
         -Method Post `
         -ContentType "application/json" `
         -Body $body2
@@ -64,7 +64,7 @@ $body3 = @{
 } | ConvertTo-Json
 
 try {
-    $response3 = Invoke-RestMethod -Uri "https://apiradio.varnaamedicalbillingsolutions.com/auth/login" `
+    $response3 = Invoke-RestMethod -Uri "http://localhost:8001/auth/login" `
         -Method Post `
         -ContentType "application/json" `
         -Body $body3
@@ -90,7 +90,7 @@ $body4 = @{
 } | ConvertTo-Json
 
 try {
-    $response4 = Invoke-RestMethod -Uri "https://apiradio.varnaamedicalbillingsolutions.com/auth/login" `
+    $response4 = Invoke-RestMethod -Uri "http://localhost:8001/auth/login" `
         -Method Post `
         -ContentType "application/json" `
         -Body $body4
@@ -115,7 +115,7 @@ $body5 = @{
 } | ConvertTo-Json
 
 try {
-    $response5 = Invoke-RestMethod -Uri "https://apiradio.varnaamedicalbillingsolutions.com/auth/login" `
+    $response5 = Invoke-RestMethod -Uri "http://localhost:8001/auth/login" `
         -Method Post `
         -ContentType "application/json" `
         -Body $body5

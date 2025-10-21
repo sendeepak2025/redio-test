@@ -109,7 +109,7 @@ mkdir -p server/backups
 #### Email Testing:
 ```bash
 # Test email service
-curl -X POST https://apiradio.varnaamedicalbillingsolutions.com/api/test-email \
+curl -X POST http://localhost:8001/api/test-email \
   -H "Authorization: Bearer YOUR_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"to":"test@example.com"}'
@@ -118,7 +118,7 @@ curl -X POST https://apiradio.varnaamedicalbillingsolutions.com/api/test-email \
 #### User Management Testing:
 ```bash
 # Create test user
-curl -X POST https://apiradio.varnaamedicalbillingsolutions.com/api/users \
+curl -X POST http://localhost:8001/api/users \
   -H "Authorization: Bearer YOUR_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -131,7 +131,7 @@ curl -X POST https://apiradio.varnaamedicalbillingsolutions.com/api/users \
   }'
 
 # List users
-curl https://apiradio.varnaamedicalbillingsolutions.com/api/users \
+curl http://localhost:8001/api/users \
   -H "Authorization: Bearer YOUR_TOKEN"
 ```
 
@@ -351,7 +351,7 @@ If issues occur:
 
 4. **Verify:**
    ```bash
-   curl https://apiradio.varnaamedicalbillingsolutions.com/health
+   curl http://localhost:8001/health
    ```
 
 ---

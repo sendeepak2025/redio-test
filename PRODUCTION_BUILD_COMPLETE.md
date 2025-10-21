@@ -183,8 +183,8 @@ mongo
 ## 🧪 Testing Checklist
 
 ### Backend Tests
-- [ ] Server starts: `curl https://apiradio.varnaamedicalbillingsolutions.com/health`
-- [ ] API works: `curl https://apiradio.varnaamedicalbillingsolutions.com/api/monitoring/system-health`
+- [ ] Server starts: `curl http://localhost:8001/health`
+- [ ] API works: `curl http://localhost:8001/api/monitoring/system-health`
 - [ ] Email sends: Test with email service
 - [ ] Users API: Create/read/update/delete users
 - [ ] Audit logs: Check `production/server/logs/audit.log`

@@ -89,11 +89,11 @@ if (isSuperAdmin) {
 ```powershell
 # Login
 $body = @{username="superadmin"; password="12345678"} | ConvertTo-Json
-$response = Invoke-RestMethod -Uri "https://apiradio.varnaamedicalbillingsolutions.com/auth/login" -Method Post -ContentType "application/json" -Body $body
+$response = Invoke-RestMethod -Uri "http://localhost:8001/auth/login" -Method Post -ContentType "application/json" -Body $body
 
 # Get Studies
 $headers = @{Authorization = "Bearer $($response.accessToken)"}
-Invoke-RestMethod -Uri "https://apiradio.varnaamedicalbillingsolutions.com/api/dicom/studies" -Headers $headers
+Invoke-RestMethod -Uri "http://localhost:8001/api/dicom/studies" -Headers $headers
 ```
 
 **Result**: सभी hospitals की studies दिखेंगी
@@ -102,11 +102,11 @@ Invoke-RestMethod -Uri "https://apiradio.varnaamedicalbillingsolutions.com/api/d
 ```powershell
 # Login
 $body = @{username="hospital"; password="123456"} | ConvertTo-Json
-$response = Invoke-RestMethod -Uri "https://apiradio.varnaamedicalbillingsolutions.com/auth/login" -Method Post -ContentType "application/json" -Body $body
+$response = Invoke-RestMethod -Uri "http://localhost:8001/auth/login" -Method Post -ContentType "application/json" -Body $body
 
 # Get Studies
 $headers = @{Authorization = "Bearer $($response.accessToken)"}
-Invoke-RestMethod -Uri "https://apiradio.varnaamedicalbillingsolutions.com/api/dicom/studies" -Headers $headers
+Invoke-RestMethod -Uri "http://localhost:8001/api/dicom/studies" -Headers $headers
 ```
 
 **Result**: सिर्फ HOSP001 की studies दिखेंगी

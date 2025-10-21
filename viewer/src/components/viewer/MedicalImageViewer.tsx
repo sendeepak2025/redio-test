@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useAppDispatch, useAppSelector } from '../../store/hooks'
 import { store } from '../../store'
+import './MedicalImageViewer.css'
 import {
   selectMeasurement,
   selectAnnotation,
@@ -98,6 +99,8 @@ import {
   Description as DescriptionIcon,
   Download as DownloadIcon,
   PhotoCamera as PhotoCameraIcon,
+  Psychology as AIIcon,
+  AutoAwesome as MagicIcon,
 } from '@mui/icons-material'
 import StructuredReporting from '../reporting/StructuredReporting'
 import SimpleReportExport from '../reporting/SimpleReportExport'
@@ -384,8 +387,14 @@ export const MedicalImageViewer: React.FC<MedicalImageViewerProps> = ({
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
   const [annotationMenuEl, setAnnotationMenuEl] = useState<null | HTMLElement>(null)
   const [pixelSpacing] = useState([0.35, 0.35]) // From real DICOM metadata
-  const [isAnalysisPanelOpen, setIsAnalysisPanelOpen] = useState(true) // Analysis panel toggle
+  const [isAnalysisPanelOpen, setIsAnalysisPanelOpen] = useState(false) // Analysis panel toggle - opens via button
   const [isToolsHistoryOpen, setIsToolsHistoryOpen] = useState(false) // Tools history toggle
+  
+  // AI Assistant states
+  const [isAIAssistantOpen, setIsAIAssistantOpen] = useState(false)
+  const [aiAnalyzing, setAiAnalyzing] = useState(false)
+  const [aiFindings, setAiFindings] = useState<any[]>([])
+  const [selectedAIModel, setSelectedAIModel] = useState<'medsigclip' | 'medgemma'>('medsigclip')
 
   // Study management
   const [availableStudies, setAvailableStudies] = useState<any[]>([])
@@ -591,10 +600,21 @@ export const MedicalImageViewer: React.FC<MedicalImageViewerProps> = ({
 
       if (!img) {
         img = new Image()
-        img.src = frameUrls[frameIndex]
+        const frameUrl = frameUrls[frameIndex]
+        console.log(`🖼️ Loading frame ${frameIndex} from: ${frameUrl}`)
+        img.src = frameUrl
+        
         await new Promise((resolve, reject) => {
-          img!.onload = resolve
-          img!.onerror = reject
+          img!.onload = () => {
+            console.log(`✅ Frame ${frameIndex} loaded successfully (${img!.width}x${img!.height})`)
+            resolve(null)
+          }
+          img!.onerror = (error) => {
+            console.error(`❌ Failed to load frame ${frameIndex} from: ${frameUrl}`)
+            console.error('   Error:', error)
+            console.error('   Check if backend is running and frame endpoint is accessible')
+            reject(error)
+          }
         })
         imageCache.current.set(frameIndex, img)
       }
@@ -620,8 +640,16 @@ export const MedicalImageViewer: React.FC<MedicalImageViewerProps> = ({
 
       // Apply window/level (simplified)
       ctx.globalAlpha = 1.0
-      // Disable image smoothing for crisp medical images
-      ctx.imageSmoothingEnabled = false
+      
+      // Smart image smoothing based on zoom level
+      // Enable smoothing when zoomed in to prevent pixelation
+      // Disable when at 1:1 or zoomed out for crisp details
+      if (zoom > 1.2) {
+        ctx.imageSmoothingEnabled = true
+        ctx.imageSmoothingQuality = 'high'
+      } else {
+        ctx.imageSmoothingEnabled = false
+      }
 
       // Draw image
       ctx.drawImage(img, offsetX, offsetY, drawWidth, drawHeight)
@@ -1400,7 +1428,7 @@ export const MedicalImageViewer: React.FC<MedicalImageViewerProps> = ({
     // Get color from style object and validate it (fix for black annotation issue)
     const rawColor = style?.strokeColor || selectedColor || MEDICAL_ANNOTATION_COLORS.green
     const annotationColor = validateAnnotationColor(rawColor)
-    
+
     // Use different colors for selected/hovered states
     const drawColor = isSelected ? '#ffff00' : isHovered ? '#00ffff' : isActive ? '#ffff00' : annotationColor
     const lineWidth = isSelected ? (style?.strokeWidth || strokeWidth) + 2 : isHovered ? (style?.strokeWidth || strokeWidth) + 1 : (style?.strokeWidth || strokeWidth)
@@ -3585,7 +3613,7 @@ export const MedicalImageViewer: React.FC<MedicalImageViewerProps> = ({
         const saveData = {
           studyInstanceUID: currentStudyId,
           patientID,
-          reportStatus: 'final',
+          reportStatus: 'final' as 'final' | 'draft' | 'preliminary' | 'amended' | 'cancelled',
           radiologistSignature: report.radiologistSignature || radiologistSignature,
           measurements: report.measurements || [],
           annotations: report.annotations || [],
@@ -3620,6 +3648,117 @@ export const MedicalImageViewer: React.FC<MedicalImageViewerProps> = ({
       setShowFinalizeDialog(true)
     }
   }, [measurements, annotations, currentStudyId, metadata, radiologistSignature, structuredReportingService])
+
+  // AI Analysis Handler
+  const handleAIAnalysis = useCallback(async () => {
+    if (!canvasRef.current) return
+
+    setAiAnalyzing(true)
+    setAiFindings([])
+
+    try {
+      let result;
+
+      if (selectedAIModel === 'medsigclip') {
+        // MedSigLIP - Image classification
+        const response = await fetch('/api/medical-ai/classify-image', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            studyInstanceUID,
+            frameIndex: currentFrameIndex
+          })
+        })
+
+        if (response.ok) {
+          const data = await response.json()
+          if (data.success) {
+            // Convert classification to findings format
+            const findings = data.data.predictions?.map((pred: any, idx: number) => ({
+              label: pred.label,
+              confidence: pred.confidence,
+              severity: pred.confidence > 0.8 ? 'high' : pred.confidence > 0.5 ? 'medium' : 'low',
+              description: `Detected with ${(pred.confidence * 100).toFixed(1)}% confidence`,
+              bbox: null // MedSigLIP classification doesn't provide bounding boxes
+            })) || []
+            setAiFindings(findings)
+          }
+        }
+      } else {
+        // MedGemma - Report generation
+        const response = await fetch('/api/medical-ai/generate-report', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            studyInstanceUID,
+            frameIndex: currentFrameIndex,
+            patientContext: {
+              modality: metadata?.study_info?.modality,
+              patientName: metadata?.patient_info?.name
+            }
+          })
+        })
+
+        if (response.ok) {
+          const data = await response.json()
+          if (data.success) {
+            // Convert report to findings format
+            const findings = [
+              {
+                label: 'Clinical Findings',
+                confidence: 0.9,
+                severity: 'low',
+                description: data.data.findings || 'Analysis complete',
+                bbox: null
+              },
+              {
+                label: 'Impression',
+                confidence: 0.9,
+                severity: 'low',
+                description: data.data.impression || 'No significant abnormalities detected',
+                bbox: null
+              }
+            ]
+            if (data.data.recommendations) {
+              findings.push({
+                label: 'Recommendations',
+                confidence: 0.85,
+                severity: 'low',
+                description: data.data.recommendations,
+                bbox: null
+              })
+            }
+            setAiFindings(findings)
+          }
+        }
+      }
+
+      // Add AI annotation marker on canvas
+      const aiMarker = {
+        id: `ai-marker-${Date.now()}`,
+        type: 'text' as const,
+        points: [{ x: 20, y: 20 }],
+        text: `✨ AI Analysis: ${selectedAIModel === 'medsigclip' ? 'MedSigLIP' : 'MedGemma'}`,
+        color: '#667eea',
+        strokeWidth: 1,
+        fontSize: 12,
+        timestamp: Date.now(),
+        author: 'AI Assistant',
+        frameIndex: currentFrameIndex
+      }
+      setAnnotations(prev => [...prev, aiMarker])
+
+    } catch (error) {
+      console.error('AI Analysis error:', error)
+      alert('AI analysis failed. The AI service may be unavailable.')
+    } finally {
+      setAiAnalyzing(false)
+    }
+  }, [canvasRef, selectedAIModel, studyInstanceUID, currentFrameIndex, metadata])
 
   const handleExportReport = useCallback(async (format: string) => {
     if (!currentReport) {
@@ -3947,7 +4086,7 @@ export const MedicalImageViewer: React.FC<MedicalImageViewerProps> = ({
         const link = document.createElement('a')
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
         const filename = `snapshot_${currentStudyId}_frame${currentFrameIndex + 1}_${timestamp}.png`
-        
+
         link.href = url
         link.download = filename
         document.body.appendChild(link)
@@ -4253,8 +4392,24 @@ export const MedicalImageViewer: React.FC<MedicalImageViewerProps> = ({
 
     const resizeCanvas = () => {
       const { clientWidth, clientHeight } = container
-      canvas.width = clientWidth
-      canvas.height = clientHeight
+      
+      // Support high-DPI displays (Retina, 4K, etc.)
+      const dpr = window.devicePixelRatio || 1
+      
+      // Set actual canvas size (accounting for device pixel ratio)
+      canvas.width = clientWidth * dpr
+      canvas.height = clientHeight * dpr
+      
+      // Scale canvas context to match device pixel ratio
+      const ctx = canvas.getContext('2d')
+      if (ctx) {
+        ctx.scale(dpr, dpr)
+      }
+      
+      // Set display size (CSS pixels)
+      canvas.style.width = `${clientWidth}px`
+      canvas.style.height = `${clientHeight}px`
+      
       drawFrame(currentFrameIndex)
     }
 
@@ -4457,147 +4612,195 @@ export const MedicalImageViewer: React.FC<MedicalImageViewerProps> = ({
       display: 'flex',
       flexDirection: 'column',
       bgcolor: '#000',
-      overflow: 'auto', // Allow scrolling for the entire viewer
-      maxHeight: '100vh' // Prevent viewport from exceeding screen height
+      overflow: 'auto',
+      maxHeight: '100vh'
     }}>
-      {/* Enhanced Medical Toolbar */}
+      {/* Modern Medical Toolbar with Glassmorphism */}
       <Paper
-        elevation={2}
+        elevation={0}
         sx={{
-          bgcolor: 'grey.900',
+          backdropFilter: 'blur(20px)',
+          bgcolor: 'rgba(0, 0, 0, 0.8)',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
           color: 'white',
           borderRadius: 0,
-          p: 1,
+          p: 1.5,
         }}
       >
-        {/* View Mode Tabs */}
+        {/* Modern View Mode Selector */}
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
-          <Tabs
-            value={viewerMode === 'stack' ? 0 : viewerMode === 'mpr' ? 1 : 2}
-            onChange={(_, newValue) => {
-              const modes: ViewerMode[] = ['stack', 'mpr', '3d']
-              setViewerMode(modes[newValue])
-            }}
-            textColor="inherit"
-            indicatorColor="primary"
-          >
-            <Tab icon={<StackIcon />} label="2D" />
-            <Tab icon={<MPRIcon />} label="MPR" />
-            <Tab icon={<View3DIcon />} label="3D" />
-          </Tabs>
+          <Box sx={{
+            display: 'flex',
+            gap: 0.5,
+            bgcolor: 'rgba(255, 255, 255, 0.05)',
+            borderRadius: 2,
+            p: 0.5,
+          }}>
+            {[
+              { mode: 'stack', icon: <StackIcon />, label: '2D' },
+              { mode: 'mpr', icon: <MPRIcon />, label: 'MPR' },
+              { mode: '3d', icon: <View3DIcon />, label: '3D' }
+            ].map(({ mode, icon, label }) => (
+              <Button
+                key={mode}
+                onClick={() => setViewerMode(mode as ViewerMode)}
+                startIcon={icon}
+                sx={{
+                  px: 2,
+                  py: 0.75,
+                  borderRadius: 1.5,
+                  color: viewerMode === mode ? 'white' : 'rgba(255, 255, 255, 0.6)',
+                  bgcolor: viewerMode === mode ? 'rgba(25, 118, 210, 0.3)' : 'transparent',
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  fontSize: '0.875rem',
+                  transition: 'all 0.2s',
+                  '&:hover': {
+                    bgcolor: viewerMode === mode ? 'rgba(25, 118, 210, 0.4)' : 'rgba(255, 255, 255, 0.1)',
+                    color: 'white',
+                  },
+                }}
+              >
+                {label}
+              </Button>
+            ))}
+          </Box>
 
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
             <Chip
               label={`${metadata?.patient_info?.name || 'Loading...'}`}
               size="small"
-              color="primary"
+              sx={{
+                bgcolor: 'rgba(25, 118, 210, 0.2)',
+                color: '#90caf9',
+                border: '1px solid rgba(25, 118, 210, 0.3)',
+                fontWeight: 600,
+              }}
             />
             <Chip
               label={`${metadata?.study_info?.modality || 'XA'} Study`}
               size="small"
-              color="secondary"
-            />
-            <Button
-              startIcon={<UploadIcon />}
-              onClick={() => setShowUploadDialog(true)}
-              variant="contained"
-              size="small"
-              color="success"
-            >
-              Upload Study
-            </Button>
-            <Button
-              startIcon={<ReportIcon />}
-              onClick={() => setShowStructuredReporting(true)}
-              variant="outlined"
-              size="small"
               sx={{
-                color: '#ff9800',
-                borderColor: '#ff9800',
-                fontWeight: 'bold',
-                '&:hover': {
-                  borderColor: '#ffb74d',
-                  backgroundColor: 'rgba(255, 152, 0, 0.1)'
-                }
+                bgcolor: 'rgba(156, 39, 176, 0.2)',
+                color: '#ce93d8',
+                border: '1px solid rgba(156, 39, 176, 0.3)',
+                fontWeight: 600,
               }}
-            >
-              📋 Structured Report
-            </Button>
-            <Button
-              startIcon={<SaveIcon />}
-              onClick={handleManualSave}
-              variant="contained"
-              size="small"
-              color="primary"
-              disabled={measurements.length === 0 && annotations.length === 0}
-              sx={{ fontWeight: 'bold' }}
-            >
-              💾 Save Report
-            </Button>
-            <Button
-              startIcon={<PhotoCameraIcon />}
-              onClick={handleCaptureSnapshot}
-              variant="outlined"
-              size="small"
-              color="secondary"
-              sx={{ fontWeight: 'bold' }}
-            >
-              📸 Snapshot
-            </Button>
+            />
+            <Divider orientation="vertical" flexItem sx={{ bgcolor: 'rgba(255, 255, 255, 0.1)', mx: 0.5 }} />
+            <Tooltip title="Upload New Study">
+              <IconButton
+                onClick={() => setShowUploadDialog(true)}
+                size="small"
+                sx={{
+                  color: 'rgba(255, 255, 255, 0.6)',
+                  bgcolor: 'rgba(255, 255, 255, 0.05)',
+                  '&:hover': { bgcolor: 'rgba(76, 175, 80, 0.2)', color: '#81c784' },
+                }}
+              >
+                <UploadIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+
+            <Tooltip title="Save Report">
+              <IconButton
+                onClick={handleManualSave}
+                size="small"
+                disabled={measurements.length === 0 && annotations.length === 0}
+                sx={{
+                  color: 'rgba(255, 255, 255, 0.6)',
+                  bgcolor: 'rgba(255, 255, 255, 0.05)',
+                  '&:hover': { bgcolor: 'rgba(25, 118, 210, 0.2)', color: '#90caf9' },
+                  '&.Mui-disabled': { color: 'rgba(255, 255, 255, 0.3)' },
+                }}
+              >
+                <SaveIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Capture Snapshot">
+              <IconButton
+                onClick={handleCaptureSnapshot}
+                size="small"
+                sx={{
+                  color: 'rgba(255, 255, 255, 0.6)',
+                  bgcolor: 'rgba(255, 255, 255, 0.05)',
+                  '&:hover': { bgcolor: 'rgba(156, 39, 176, 0.2)', color: '#ce93d8' },
+                }}
+              >
+                <PhotoCameraIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
             {autoSaveStatus !== 'idle' && (
               <Chip
                 size="small"
                 label={
-                  autoSaveStatus === 'saving' ? '💾 Saving...' :
-                    autoSaveStatus === 'saved' ? '✅ Saved' :
-                      '❌ Error'
+                  autoSaveStatus === 'saving' ? 'Saving...' :
+                    autoSaveStatus === 'saved' ? 'Saved' :
+                      'Error'
                 }
-                color={
-                  autoSaveStatus === 'saving' ? 'default' :
-                    autoSaveStatus === 'saved' ? 'success' :
-                      'error'
+                icon={
+                  autoSaveStatus === 'saving' ? <SaveIcon fontSize="small" /> :
+                    autoSaveStatus === 'saved' ? <CheckIcon fontSize="small" /> :
+                      <ErrorIcon fontSize="small" />
                 }
-                sx={{ ml: 1 }}
+                sx={{
+                  bgcolor: autoSaveStatus === 'saving' ? 'rgba(255, 255, 255, 0.1)' :
+                    autoSaveStatus === 'saved' ? 'rgba(76, 175, 80, 0.2)' :
+                      'rgba(244, 67, 54, 0.2)',
+                  color: autoSaveStatus === 'saving' ? 'rgba(255, 255, 255, 0.8)' :
+                    autoSaveStatus === 'saved' ? '#81c784' :
+                      '#ef5350',
+                  border: `1px solid ${autoSaveStatus === 'saving' ? 'rgba(255, 255, 255, 0.2)' :
+                    autoSaveStatus === 'saved' ? 'rgba(76, 175, 80, 0.3)' :
+                      'rgba(244, 67, 54, 0.3)'}`,
+                  fontWeight: 600,
+                }}
               />
             )}
             {currentReportId && (
-              <Button
-                startIcon={<CheckIcon />}
-                onClick={() => setShowFinalizeDialog(true)}
-                variant="contained"
-                size="small"
-                color="success"
-                sx={{ fontWeight: 'bold' }}
-              >
-                ✅ Finalize Report
-              </Button>
+              <Tooltip title="Finalize Report">
+                <IconButton
+                  onClick={() => setShowFinalizeDialog(true)}
+                  size="small"
+                  sx={{
+                    color: '#81c784',
+                    bgcolor: 'rgba(76, 175, 80, 0.2)',
+                    border: '1px solid rgba(76, 175, 80, 0.3)',
+                    '&:hover': { bgcolor: 'rgba(76, 175, 80, 0.3)' },
+                  }}
+                >
+                  <CheckIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
             )}
 
-            <Button
-              startIcon={<DownloadIcon />}
-              onClick={() => setShowExportDialog(true)}
-              variant="contained"
-              size="small"
-              sx={{
-                background: 'linear-gradient(45deg, #2e7d32, #4caf50)',
-                color: 'white',
-                fontWeight: 'bold',
-                '&:hover': {
-                  background: 'linear-gradient(45deg, #1b5e20, #388e3c)'
-                }
-              }}
-            >
-              📤 Export Report
-            </Button>
-            <Button
-              startIcon={<StudyIcon />}
-              onClick={() => setShowStudySelector(true)}
-              variant="outlined"
-              size="small"
-              sx={{ color: 'white', borderColor: 'white' }}
-            >
-              Studies ({availableStudies.length})
-            </Button>
+            <Tooltip title="Export Report">
+              <IconButton
+                onClick={() => setShowExportDialog(true)}
+                size="small"
+                sx={{
+                  color: '#81c784',
+                  bgcolor: 'rgba(76, 175, 80, 0.2)',
+                  border: '1px solid rgba(76, 175, 80, 0.3)',
+                  '&:hover': { bgcolor: 'rgba(76, 175, 80, 0.3)' },
+                }}
+              >
+                <DownloadIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title={`Browse Studies (${availableStudies.length})`}>
+              <IconButton
+                onClick={() => setShowStudySelector(true)}
+                size="small"
+                sx={{
+                  color: 'rgba(255, 255, 255, 0.6)',
+                  bgcolor: 'rgba(255, 255, 255, 0.05)',
+                  '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.1)', color: 'white' },
+                }}
+              >
+                <StudyIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
             <Button
               startIcon={<InfoIcon />}
               onClick={() => setShowMetadata(true)}
@@ -4925,27 +5128,7 @@ export const MedicalImageViewer: React.FC<MedicalImageViewerProps> = ({
         />
       </Paper> */}
 
-      {/* Enhanced Cine Controls */}
-      {totalFrames > 1 && (
-        <Paper sx={{ mb: 2 }}>
-          <CineControls
-            isPlaying={isPlaying}
-            currentFrame={currentFrameIndex}
-            totalFrames={totalFrames}
-            fps={cineFps}
-            loop={cineLoop}
-            onPlayPause={handleCinePlayPause}
-            onStop={handleCineStop}
-            onPrevFrame={previousFrame}
-            onNextFrame={nextFrame}
-            onFirstFrame={handleFirstFrame}
-            onLastFrame={handleLastFrame}
-            onFpsChange={handleFpsChange}
-            onLoopToggle={handleLoopToggle}
-            onFrameChange={setCurrentFrameIndex}
-          />
-        </Paper>
-      )}
+
 
       {/* Main Viewer Area */}
       <Box sx={{
@@ -5014,7 +5197,8 @@ export const MedicalImageViewer: React.FC<MedicalImageViewerProps> = ({
                   display: 'block',
                   touchAction: 'none', // Prevent touch scrolling on canvas
                   userSelect: 'none', // Prevent text selection
-                  cursor: getCursorForTool(activeTool) // Dynamic cursor based on active tool
+                  cursor: getCursorForTool(activeTool), // Dynamic cursor based on active tool
+                  imageRendering: zoom > 1.5 ? 'auto' : 'crisp-edges' // Better quality at high zoom
                 }}
               />
 
@@ -5271,40 +5455,6 @@ export const MedicalImageViewer: React.FC<MedicalImageViewerProps> = ({
               )}
             </Box>
 
-            {/* Frame Navigation Controls */}
-            <Box
-              sx={{
-                bgcolor: 'grey.900',
-                color: 'white',
-                p: 2,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 2
-              }}
-            >
-              <Typography variant="body2" sx={{ minWidth: 100 }}>
-                Frame: {currentFrameIndex + 1} / {totalFrames}
-              </Typography>
-              <Slider
-                value={currentFrameIndex}
-                min={0}
-                max={totalFrames - 1}
-                step={1}
-                onChange={(_, value) => goToFrame(value as number)}
-                sx={{ flex: 1, color: 'primary.main' }}
-              />
-              <Typography variant="body2" sx={{ minWidth: 80 }}>
-                Speed: {playSpeed}ms
-              </Typography>
-              <Slider
-                value={playSpeed}
-                min={50}
-                max={1000}
-                step={50}
-                onChange={(_, value) => setPlaySpeed(value as number)}
-                sx={{ width: 100, color: 'secondary.main' }}
-              />
-            </Box>
           </Box>
         )}
 
@@ -5556,15 +5706,15 @@ export const MedicalImageViewer: React.FC<MedicalImageViewerProps> = ({
                     onClick={handleStart3DRendering}
                     disabled={totalFrames < 2}
                     sx={{
-                      background: totalFrames < 2 
-                        ? 'linear-gradient(45deg, #666, #888)' 
+                      background: totalFrames < 2
+                        ? 'linear-gradient(45deg, #666, #888)'
                         : 'linear-gradient(45deg, #2196f3, #21cbf3)',
                       color: 'white',
                       fontWeight: 'bold',
                       px: 3,
                       '&:hover': {
-                        background: totalFrames < 2 
-                          ? 'linear-gradient(45deg, #666, #888)' 
+                        background: totalFrames < 2
+                          ? 'linear-gradient(45deg, #666, #888)'
                           : 'linear-gradient(45deg, #1976d2, #0288d1)',
                       },
                       '&.Mui-disabled': {
@@ -5597,13 +5747,13 @@ export const MedicalImageViewer: React.FC<MedicalImageViewerProps> = ({
                       3D Rendering Active
                     </Typography>
                   </Box>
-                  
+
                   {/* Fallback Warning */}
                   {volumeRenderer.rendererType === 'canvas' && (
-                    <Alert 
-                      severity="warning" 
-                      sx={{ 
-                        mt: 1, 
+                    <Alert
+                      severity="warning"
+                      sx={{
+                        mt: 1,
                         mb: 1,
                         fontSize: '0.875rem',
                         '& .MuiAlert-message': {
@@ -5628,7 +5778,7 @@ export const MedicalImageViewer: React.FC<MedicalImageViewerProps> = ({
                       </ul>
                     </Alert>
                   )}
-                  
+
                   <Button
                     size="small"
                     onClick={() => setIs3DRenderingStarted(false)}
@@ -5715,9 +5865,9 @@ export const MedicalImageViewer: React.FC<MedicalImageViewerProps> = ({
                     High
                   </Button>
                 </ButtonGroup>
-                
+
                 <Divider orientation="vertical" flexItem sx={{ mx: 1 }} />
-                
+
                 {/* Opacity Slider */}
                 <Typography variant="body2" color="grey.400">
                   Opacity:
@@ -5731,9 +5881,9 @@ export const MedicalImageViewer: React.FC<MedicalImageViewerProps> = ({
                   disabled={!is3DRenderingStarted}
                   sx={{ width: 100 }}
                 />
-                
+
                 <Divider orientation="vertical" flexItem sx={{ mx: 1 }} />
-                
+
                 {/* Rotation Controls */}
                 <Typography variant="body2" color="grey.400">
                   Rotation:
@@ -5755,7 +5905,7 @@ export const MedicalImageViewer: React.FC<MedicalImageViewerProps> = ({
                 >
                   <ResetIcon />
                 </Button>
-                
+
                 {/* Performance Info */}
                 {is3DRenderingStarted && volumeRenderer.renderTime > 0 && (
                   <>
@@ -5802,7 +5952,7 @@ export const MedicalImageViewer: React.FC<MedicalImageViewerProps> = ({
                       display: volumeRenderer.rendererType === 'vtk' ? 'block' : 'none'
                     }}
                   />
-                  
+
                   {/* Canvas fallback for non-WebGL browsers */}
                   <canvas
                     ref={canvas3DRef}
@@ -5820,7 +5970,7 @@ export const MedicalImageViewer: React.FC<MedicalImageViewerProps> = ({
                       objectFit: 'contain'
                     }}
                   />
-                  
+
                   {/* Performance Overlay */}
                   {volumeRenderer.volume && (
                     <Box sx={{
@@ -5835,44 +5985,44 @@ export const MedicalImageViewer: React.FC<MedicalImageViewerProps> = ({
                       color: '#00ff41'
                     }}>
                       {/* Renderer Type Indicator */}
-                      <div style={{ 
+                      <div style={{
                         color: volumeRenderer.rendererType === 'vtk' ? '#00ff41' : '#ffaa00',
                         fontWeight: 'bold',
                         marginBottom: '4px'
                       }}>
                         🎨 Renderer: {volumeRenderer.rendererType === 'vtk' ? 'VTK.js (GPU)' : 'Canvas (CPU)'}
                       </div>
-                      
+
                       {/* WebGL Version (only for VTK.js) */}
                       {volumeRenderer.rendererType === 'vtk' && volumeRenderer.webglVersion && (
                         <div style={{ color: '#00aaff' }}>
                           WebGL: {volumeRenderer.webglVersion}
                         </div>
                       )}
-                      
+
                       <div>Volume: {volumeRenderer.volume.dimensions.width}×{volumeRenderer.volume.dimensions.height}×{volumeRenderer.volume.dimensions.depth}</div>
                       <div>Mode: {volumeRenderer.renderSettings.mode.toUpperCase()}</div>
                       <div>Quality: {volumeRenderer.renderQuality?.toUpperCase()}</div>
-                      
+
                       {/* GPU Memory Usage (only for VTK.js) */}
                       {volumeRenderer.rendererType === 'vtk' && volumeRenderer.gpuMemoryMB > 0 && (
                         <div style={{ color: volumeRenderer.gpuMemoryMB > 400 ? '#ff5555' : '#00ff41' }}>
                           GPU Memory: {volumeRenderer.gpuMemoryMB.toFixed(1)} MB
                         </div>
                       )}
-                      
+
                       {/* FPS Display */}
                       {volumeRenderer.fps > 0 && (
                         <div style={{ color: volumeRenderer.fps >= 30 ? '#00ff41' : volumeRenderer.fps >= 15 ? '#ffaa00' : '#ff5555' }}>
                           FPS: {volumeRenderer.fps.toFixed(1)}
                         </div>
                       )}
-                      
+
                       {volumeRenderer.isInteracting && <div style={{ color: '#ffaa00' }}>⚡ INTERACTING (Low Res)</div>}
                       {volumeRenderer.rendererType === 'canvas' && volumeRenderer.useWebWorker && <div style={{ color: '#00aaff' }}>🔧 Web Worker Active</div>}
                     </Box>
                   )}
-                  
+
                   {/* Interaction Hint */}
                   {!volumeRenderer.isInteracting && !volumeRenderer.isRotating && (
                     <Box sx={{
@@ -6062,14 +6212,37 @@ export const MedicalImageViewer: React.FC<MedicalImageViewerProps> = ({
         )}
       </Box>
 
-      {/* Reopen Analysis Panel Button */}
-      {(measurements.length > 0 || annotations.length > 0) && !isAnalysisPanelOpen && (
+      {/* AI Assistant Button */}
+      <Tooltip title="AI Assistant (MedSigLIP & MedGemma)">
+        <IconButton
+          onClick={() => setIsAIAssistantOpen(true)}
+          sx={{
+            position: 'fixed',
+            top: 120,
+            right: 20,
+            bgcolor: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            color: 'white',
+            zIndex: 1000,
+            boxShadow: '0 4px 12px rgba(102, 126, 234, 0.4)',
+            '&:hover': {
+              background: 'linear-gradient(135deg, #764ba2 0%, #667eea 100%)',
+              boxShadow: '0 6px 16px rgba(102, 126, 234, 0.6)',
+            }
+          }}
+        >
+          <AIIcon />
+        </IconButton>
+      </Tooltip>
+
+      {/* Analysis Panel Toggle Button */}
+      {!isAnalysisPanelOpen && (
         <Tooltip title="Show Analysis Panel">
           <IconButton
             onClick={() => setIsAnalysisPanelOpen(true)}
             sx={{
               position: 'fixed',
-              top: 120,
+              top: 180,
               right: 20,
               bgcolor: 'primary.main',
               color: 'white',
@@ -6091,6 +6264,158 @@ export const MedicalImageViewer: React.FC<MedicalImageViewerProps> = ({
         measurements={measurements}
         annotations={annotations}
       />
+
+      {/* AI Assistant Dialog */}
+      <Dialog
+        open={isAIAssistantOpen}
+        onClose={() => setIsAIAssistantOpen(false)}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{
+          sx: {
+            background: 'linear-gradient(135deg, #1e1e2e 0%, #2d2d44 100%)',
+            borderRadius: 3,
+            border: '1px solid rgba(102, 126, 234, 0.3)'
+          }
+        }}
+      >
+        <DialogTitle sx={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: 2,
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          color: 'white'
+        }}>
+          <AIIcon />
+          <Box>
+            <Typography variant="h6">AI Medical Assistant</Typography>
+            <Typography variant="caption">Powered by MedSigLIP & MedGemma</Typography>
+          </Box>
+        </DialogTitle>
+        
+        <DialogContent sx={{ mt: 2 }}>
+          {/* Model Selection */}
+          <Box sx={{ mb: 3 }}>
+            <Typography variant="subtitle2" gutterBottom color="grey.300">
+              Select AI Model:
+            </Typography>
+            <ButtonGroup fullWidth variant="outlined">
+              <Button
+                variant={selectedAIModel === 'medsigclip' ? 'contained' : 'outlined'}
+                onClick={() => setSelectedAIModel('medsigclip')}
+                startIcon={<MagicIcon />}
+                sx={{
+                  bgcolor: selectedAIModel === 'medsigclip' ? 'primary.main' : 'transparent',
+                  '&:hover': {
+                    bgcolor: selectedAIModel === 'medsigclip' ? 'primary.dark' : 'rgba(102, 126, 234, 0.1)'
+                  }
+                }}
+              >
+                MedSigLIP
+                <Chip 
+                  label="Vision" 
+                  size="small" 
+                  sx={{ ml: 1, height: 20 }}
+                  color="primary"
+                />
+              </Button>
+              <Button
+                variant={selectedAIModel === 'medgemma' ? 'contained' : 'outlined'}
+                onClick={() => setSelectedAIModel('medgemma')}
+                startIcon={<CommentIcon />}
+                sx={{
+                  bgcolor: selectedAIModel === 'medgemma' ? 'secondary.main' : 'transparent',
+                  '&:hover': {
+                    bgcolor: selectedAIModel === 'medgemma' ? 'secondary.dark' : 'rgba(118, 75, 162, 0.1)'
+                  }
+                }}
+              >
+                MedGemma
+                <Chip 
+                  label="Language" 
+                  size="small" 
+                  sx={{ ml: 1, height: 20 }}
+                  color="secondary"
+                />
+              </Button>
+            </ButtonGroup>
+          </Box>
+
+          {/* Model Info */}
+          <Card sx={{ mb: 3, bgcolor: 'rgba(102, 126, 234, 0.1)', border: '1px solid rgba(102, 126, 234, 0.2)' }}>
+            <CardContent>
+              <Typography variant="subtitle2" color="primary" gutterBottom>
+                {selectedAIModel === 'medsigclip' ? '🔍 MedSigLIP' : '💬 MedGemma'}
+              </Typography>
+              <Typography variant="body2" color="grey.300">
+                {selectedAIModel === 'medsigclip' 
+                  ? 'Medical image understanding model that can detect anatomical structures, abnormalities, and pathologies in real-time on the canvas.'
+                  : 'Medical language model that provides detailed clinical interpretations, differential diagnoses, and recommendations based on visual findings.'}
+              </Typography>
+            </CardContent>
+          </Card>
+
+          {/* AI Findings */}
+          {aiFindings.length > 0 && (
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="subtitle2" gutterBottom color="grey.300">
+                AI Findings:
+              </Typography>
+              {aiFindings.map((finding: any, index: number) => (
+                <Alert 
+                  key={index}
+                  severity={finding.severity === 'high' ? 'error' : finding.severity === 'medium' ? 'warning' : 'info'}
+                  sx={{ mb: 1 }}
+                >
+                  <Typography variant="body2" fontWeight="bold">
+                    {finding.label}
+                  </Typography>
+                  <Typography variant="caption">
+                    Confidence: {(finding.confidence * 100).toFixed(1)}% | {finding.description}
+                  </Typography>
+                </Alert>
+              ))}
+            </Box>
+          )}
+
+          {/* Current Frame Info */}
+          <Box sx={{ p: 2, bgcolor: 'rgba(0,0,0,0.3)', borderRadius: 2 }}>
+            <Grid container spacing={2}>
+              <Grid item xs={6}>
+                <Typography variant="caption" color="grey.400">Current Frame</Typography>
+                <Typography variant="body2" color="white">{currentFrameIndex + 1} / {totalFrames}</Typography>
+              </Grid>
+              <Grid item xs={6}>
+                <Typography variant="caption" color="grey.400">Modality</Typography>
+                <Typography variant="body2" color="white">{metadata?.study_info?.modality || 'N/A'}</Typography>
+              </Grid>
+            </Grid>
+          </Box>
+        </DialogContent>
+
+        <DialogActions sx={{ p: 3, gap: 1 }}>
+          <Button 
+            onClick={() => setIsAIAssistantOpen(false)}
+            variant="outlined"
+          >
+            Close
+          </Button>
+          <Button
+            onClick={handleAIAnalysis}
+            variant="contained"
+            disabled={aiAnalyzing}
+            startIcon={aiAnalyzing ? <RefreshIcon className="spin" /> : <AIIcon />}
+            sx={{
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              '&:hover': {
+                background: 'linear-gradient(135deg, #764ba2 0%, #667eea 100%)',
+              }
+            }}
+          >
+            {aiAnalyzing ? 'Analyzing...' : 'Analyze Current Frame'}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Tools History Toggle Button */}
       <Tooltip title={isToolsHistoryOpen ? "Hide Tools History" : "Show Tools History"}>

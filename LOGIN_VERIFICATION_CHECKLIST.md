@@ -3,7 +3,7 @@
 ## ✅ Pre-Flight Checks
 
 ### 1. Server Running
-- [ ] Backend server is running on `https://apiradio.varnaamedicalbillingsolutions.com`
+- [ ] Backend server is running on `http://localhost:8001`
 - [ ] Frontend dev server is running on `http://localhost:5173`
 - [ ] MongoDB is connected (check server logs)
 
@@ -52,7 +52,7 @@ Expected output:
 
 ### Test 1: Super Admin Login (Username)
 ```bash
-curl -X POST https://apiradio.varnaamedicalbillingsolutions.com/auth/login \
+curl -X POST http://localhost:8001/auth/login \
   -H "Content-Type: application/json" \
   -d '{"username":"superadmin","password":"12345678"}'
 ```
@@ -67,7 +67,7 @@ curl -X POST https://apiradio.varnaamedicalbillingsolutions.com/auth/login \
 
 ### Test 2: Super Admin Login (Email)
 ```bash
-curl -X POST https://apiradio.varnaamedicalbillingsolutions.com/auth/login \
+curl -X POST http://localhost:8001/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email":"superadmin@gmail.com","password":"12345678"}'
 ```
@@ -77,7 +77,7 @@ curl -X POST https://apiradio.varnaamedicalbillingsolutions.com/auth/login \
 
 ### Test 3: Hospital Admin Login (Username)
 ```bash
-curl -X POST https://apiradio.varnaamedicalbillingsolutions.com/auth/login \
+curl -X POST http://localhost:8001/auth/login \
   -H "Content-Type: application/json" \
   -d '{"username":"hospital","password":"123456"}'
 ```
@@ -92,7 +92,7 @@ curl -X POST https://apiradio.varnaamedicalbillingsolutions.com/auth/login \
 
 ### Test 4: Hospital Admin Login (Email)
 ```bash
-curl -X POST https://apiradio.varnaamedicalbillingsolutions.com/auth/login \
+curl -X POST http://localhost:8001/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email":"hospital@gmail.com","password":"123456"}'
 ```
@@ -102,7 +102,7 @@ curl -X POST https://apiradio.varnaamedicalbillingsolutions.com/auth/login \
 
 ### Test 5: Invalid Credentials
 ```bash
-curl -X POST https://apiradio.varnaamedicalbillingsolutions.com/auth/login \
+curl -X POST http://localhost:8001/auth/login \
   -H "Content-Type: application/json" \
   -d '{"username":"superadmin","password":"wrongpassword"}'
 ```
@@ -114,7 +114,7 @@ curl -X POST https://apiradio.varnaamedicalbillingsolutions.com/auth/login \
 
 ### Test 6: Missing Password
 ```bash
-curl -X POST https://apiradio.varnaamedicalbillingsolutions.com/auth/login \
+curl -X POST http://localhost:8001/auth/login \
   -H "Content-Type: application/json" \
   -d '{"username":"superadmin"}'
 ```
@@ -296,7 +296,7 @@ node test-login.js
 **Expected Output:**
 ```
 🚀 Starting Login Tests
-   Server: https://apiradio.varnaamedicalbillingsolutions.com
+   Server: http://localhost:8001
 ============================================================
 
 🧪 Testing: Super Admin (username)

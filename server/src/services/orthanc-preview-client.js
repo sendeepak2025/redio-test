@@ -52,6 +52,39 @@ class OrthancPreviewClient {
     }
 
     try {
+      // Auto-detect if we should use 'rendered' endpoint for color images or compressed formats
+      if (!options.useRendered) {
+        try {
+          const metadata = await this.getInstanceMetadata(instanceId);
+          const samplesPerPixel = parseInt(metadata.SamplesPerPixel) || 1;
+          const photometric = (metadata.PhotometricInterpretation || '').toUpperCase();
+          const transferSyntax = metadata.TransferSyntaxUID || '';
+          const modality = (metadata.Modality || '').toUpperCase();
+          
+          // Check if compressed (JPEG, MPEG, etc.)
+          const isCompressed = this.isCompressedSyntax(transferSyntax);
+          
+          // Use 'rendered' endpoint for:
+          // 1. Color images (RGB, YBR, PALETTE)
+          // 2. Compressed formats (JPEG, MPEG, RLE)
+          // 3. Ultrasound/Echocardiogram (US modality - often compressed video)
+          // 4. Secondary Capture (SC - often JPEG compressed)
+          if (samplesPerPixel === 3 || 
+              photometric.includes('RGB') || 
+              photometric.includes('YBR') || 
+              photometric.includes('PALETTE') ||
+              isCompressed ||
+              modality === 'US' ||
+              modality === 'SC') {
+            console.log(`🎨 Special format detected (modality: ${modality}, ${photometric}, ${samplesPerPixel} samples, compressed: ${isCompressed}) - using 'rendered' endpoint`);
+            options.useRendered = true;
+          }
+        } catch (metaError) {
+          console.warn('Failed to check image type, defaulting to rendered endpoint for safety:', metaError.message);
+          // Default to 'rendered' on error for better compatibility
+          options.useRendered = true;
+        }
+      }
 
       // Build preview URL with options
       const previewUrl = this.buildPreviewUrl(instanceId, frameIndex, options);
@@ -79,6 +112,14 @@ class OrthancPreviewClient {
       return pngBuffer;
 
     } catch (error) {
+      // Try 'rendered' endpoint as fallback if 'preview' failed and we haven't tried it yet
+      if (!options.useRendered && !options.triedRendered) {
+        console.warn(`Preview endpoint failed, trying 'rendered' endpoint for color support...`);
+        options.useRendered = true;
+        options.triedRendered = true;
+        return this.generatePreview(instanceId, frameIndex, options);
+      }
+
       // Check if this is a client error that was already handled in retry logic
       if (error.response && error.response.status >= 400 && error.response.status < 500) {
         // Client error was already recorded in executeWithRetry, just rethrow
@@ -158,8 +199,13 @@ class OrthancPreviewClient {
    * @private
    */
   buildPreviewUrl(instanceId, frameIndex, options) {
-    // Always use frames endpoint for consistency (works for both single and multi-frame)
-    let url = `/instances/${instanceId}/frames/${frameIndex}/preview`;
+    // Use 'rendered' endpoint for:
+    // - Color images (RGB, YBR, PALETTE)
+    // - Compressed formats (JPEG, MPEG, RLE)
+    // - Ultrasound/Echocardiogram (US modality)
+    // Use 'preview' endpoint for grayscale uncompressed images (faster)
+    const endpoint = options.useRendered ? 'rendered' : 'preview';
+    let url = `/instances/${instanceId}/frames/${frameIndex}/${endpoint}`;
 
     // Add query parameters for preview options
     const params = new URLSearchParams();
@@ -168,9 +214,8 @@ class OrthancPreviewClient {
       params.append('quality', options.quality.toString());
     }
 
-    if (options.returnUnsupportedImage !== undefined) {
-      params.append('returnUnsupportedImage', options.returnUnsupportedImage.toString());
-    }
+    // Always return unsupported image as fallback
+    params.append('returnUnsupportedImage', 'true');
 
     const queryString = params.toString();
     return queryString ? `${url}?${queryString}` : url;

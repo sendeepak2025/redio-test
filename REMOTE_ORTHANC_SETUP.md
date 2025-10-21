@@ -102,7 +102,7 @@ SYNC_INTERVAL=60  # seconds
 After sync, studies will be available in:
 
 1. **Viewer**: http://localhost:5173/viewer
-2. **API**: https://apiradio.varnaamedicalbillingsolutions.com/api/dicom/studies
+2. **API**: http://localhost:8001/api/dicom/studies
 3. **Database**: MongoDB `dicomdb` collection
 
 ## Troubleshooting
@@ -231,13 +231,13 @@ The synced studies are automatically available via your existing API:
 
 ```javascript
 // Get all studies
-GET https://apiradio.varnaamedicalbillingsolutions.com/api/dicom/studies
+GET http://localhost:8001/api/dicom/studies
 
 // Get specific study
-GET https://apiradio.varnaamedicalbillingsolutions.com/api/dicom/studies/:studyUid
+GET http://localhost:8001/api/dicom/studies/:studyUid
 
 // Get study frames
-GET https://apiradio.varnaamedicalbillingsolutions.com/api/dicom/studies/:studyUid/frames/:frameIndex
+GET http://localhost:8001/api/dicom/studies/:studyUid/frames/:frameIndex
 ```
 
 ## Next Steps

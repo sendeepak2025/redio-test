@@ -20,7 +20,7 @@ class UnifiedOrthancService {
       orthancUrl: config.orthancUrl || process.env.ORTHANC_URL || 'http://69.62.70.102:8042',
       orthancUsername: config.orthancUsername || process.env.ORTHANC_USERNAME || 'orthanc',
       orthancPassword: config.orthancPassword || process.env.ORTHANC_PASSWORD || 'orthanc',
-      timeout: config.timeout || 60000,
+      timeout: config.timeout || 600000,
       ...config
     };
 

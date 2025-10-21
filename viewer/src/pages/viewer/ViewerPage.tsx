@@ -1,5 +1,46 @@
 import React, { useState, useEffect } from 'react'
-import { Box, Alert, Typography, Button, Paper, Grid, Chip, Tabs, Tab, ToggleButtonGroup, ToggleButton } from '@mui/material'
+import {
+  Box,
+  Alert,
+  Typography,
+  Button,
+  Paper,
+  Grid,
+  Chip,
+  Tabs,
+  Tab,
+  ToggleButtonGroup,
+  ToggleButton,
+  IconButton,
+  Tooltip,
+  Stack,
+  Fade,
+  Slide,
+  alpha,
+  useTheme,
+  ButtonBase,
+  Divider,
+} from '@mui/material'
+import {
+  ArrowBack,
+  Layers,
+  ViewInAr,
+  Psychology,
+  ImageSearch,
+  Description,
+  Fullscreen,
+  FullscreenExit,
+  Share,
+  Download,
+  ZoomIn,
+  ZoomOut,
+  RotateRight,
+  Contrast,
+  Brightness7,
+  Settings,
+  Close,
+  GridOn,
+} from '@mui/icons-material'
 import { Helmet } from 'react-helmet-async'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
@@ -7,6 +48,7 @@ import { MedicalImageViewer } from '../../components/viewer/MedicalImageViewer'
 import Cornerstone3DViewer from '../../components/viewer/Cornerstone3DViewer'
 import { VolumeViewer3D } from '../../components/viewer/VolumeViewer3D'
 import { ReportingInterface } from '../../components/reporting/ReportingInterface'
+import EnhancedReportingInterface from '../../components/reporting/EnhancedReportingInterface'
 import { PatientContextPanel } from '../../components/worklist/PatientContextPanel'
 import AIAnalysisPanel from '../../components/ai/AIAnalysisPanel'
 import SimilarImagesPanel from '../../components/ai/SimilarImagesPanel'
@@ -34,11 +76,12 @@ function TabPanel({ children, value, index, ...other }: TabPanelProps) {
 }
 
 const ViewerPage: React.FC = () => {
+  const theme = useTheme()
   const { studyInstanceUID } = useParams<{ studyInstanceUID: string }>()
   console.log(studyInstanceUID)
   const { user } = useAuth()
   const navigate = useNavigate()
-  const [isLoading, setIsLoading] = useState(false) // Force false to test rendering
+  const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [studyData, setStudyData] = useState<any>({
     studyInstanceUID: '',
@@ -63,6 +106,9 @@ const ViewerPage: React.FC = () => {
   const [patientContext, setPatientContext] = useState<any>(null)
   const [activeTab, setActiveTab] = useState(0)
   const [viewerType, setViewerType] = useState<'legacy' | 'cornerstone3d' | '3d'>('legacy')
+  const [isFullscreen, setIsFullscreen] = useState(false)
+  const [showToolbar, setShowToolbar] = useState(true)
+  const [selectedSeries, setSelectedSeries] = useState<any>(null)
 
   // Load study data from DICOM API
   useEffect(() => {
@@ -141,6 +187,22 @@ const ViewerPage: React.FC = () => {
     loadStudyData()
   }, [studyInstanceUID])
 
+  useEffect(() => {
+    if (studyData?.series?.[0]) {
+      setSelectedSeries(studyData.series[0])
+    }
+  }, [studyData])
+
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen()
+      setIsFullscreen(true)
+    } else {
+      document.exitFullscreen()
+      setIsFullscreen(false)
+    }
+  }
+
   if (isLoading || !studyInstanceUID) {
     return (
       <>
@@ -153,11 +215,30 @@ const ViewerPage: React.FC = () => {
           display: 'flex', 
           alignItems: 'center', 
           justifyContent: 'center',
-          bgcolor: 'grey.900'
+          bgcolor: '#000',
         }}>
-          <Typography variant="h6" color="grey.400">
-            Loading medical imaging study...
-          </Typography>
+          <Box sx={{ textAlign: 'center' }}>
+            <Box
+              sx={{
+                width: 60,
+                height: 60,
+                borderRadius: '50%',
+                border: '3px solid',
+                borderColor: `${alpha(theme.palette.primary.main, 0.3)}`,
+                borderTopColor: theme.palette.primary.main,
+                animation: 'spin 1s linear infinite',
+                mx: 'auto',
+                mb: 2,
+                '@keyframes spin': {
+                  '0%': { transform: 'rotate(0deg)' },
+                  '100%': { transform: 'rotate(360deg)' },
+                },
+              }}
+            />
+            <Typography variant="h6" sx={{ color: 'white', fontWeight: 300 }}>
+              Loading Study...
+            </Typography>
+          </Box>
         </Box>
       </>
     )
@@ -170,18 +251,28 @@ const ViewerPage: React.FC = () => {
           <title>Error - Medical Imaging Viewer</title>
         </Helmet>
         
-        <Box sx={{ p: 3 }}>
-          <Alert severity="error">
-            <Typography variant="h6" gutterBottom>
-              Failed to Load Study
+        <Box sx={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center', 
+          height: '100vh',
+          bgcolor: '#000',
+        }}>
+          <Paper sx={{ p: 4, maxWidth: 500, textAlign: 'center' }}>
+            <Typography variant="h5" color="error" gutterBottom>
+              Error Loading Study
             </Typography>
-            <Typography variant="body2">{error}</Typography>
-            {studyInstanceUID && (
-              <Typography variant="body2" sx={{ mt: 1 }}>
-                Study UID: {studyInstanceUID}
-              </Typography>
-            )}
-          </Alert>
+            <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+              {error}
+            </Typography>
+            <Button
+              variant="contained"
+              startIcon={<ArrowBack />}
+              onClick={() => navigate('/dashboard')}
+            >
+              Back to Dashboard
+            </Button>
+          </Paper>
         </Box>
       </>
     )
@@ -190,173 +281,254 @@ const ViewerPage: React.FC = () => {
   return (
     <>
       <Helmet>
-        <title>{`Medical Image Viewer - ${studyData?.studyDescription || 'DICOM Study'}`}</title>
+        <title>{`Viewer - ${studyData?.studyDescription || 'Medical Study'}`}</title>
       </Helmet>
       
-      <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
-        {/* Header */}
-        <Box sx={{ 
-          bgcolor: 'secondary.main', 
-          color: 'secondary.contrastText', 
-          p: 2,
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center'
-        }}>
-          <Typography variant="h5" sx={{ fontWeight: 600 }}>
-            👁️ Advanced Medical Imaging Viewer
-          </Typography>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Typography variant="body2">
-              {user?.firstName} {user?.lastName}
-            </Typography>
-            <Button 
-              variant="contained" 
-              size="small" 
-              onClick={() => navigate('/orthanc')}
-              sx={{ 
-                bgcolor: 'primary.main',
-                '&:hover': {
-                  bgcolor: 'primary.dark'
-                }
-              }}
-            >
-              📁 Browse Studies
-            </Button>
-            <Button 
-              variant="outlined" 
-              size="small" 
-              onClick={() => navigate('/dashboard')}
-              sx={{ 
-                color: 'secondary.contrastText', 
-                borderColor: 'secondary.contrastText',
-                '&:hover': {
-                  bgcolor: 'rgba(255,255,255,0.1)'
-                }
-              }}
-            >
-              Back to Dashboard
-            </Button>
-          </Box>
-        </Box>
-
-        {/* Study Information */}
-      {false &&   <Box sx={{ p: 2, bgcolor: 'grey.100' }}>
-          <Grid container spacing={2} alignItems="center">
-            <Grid item xs={12} md={3}>
-              <Typography variant="body2" color="text.secondary">Patient:</Typography>
-              <Typography variant="body1" fontWeight="bold">
-                {studyData?.patientName?.replace('^', ', ') || 'Unknown Patient'}
-              </Typography>
-            </Grid>
-            <Grid item xs={12} md={2}>
-              <Typography variant="body2" color="text.secondary">Patient ID:</Typography>
-              <Typography variant="body1">{studyData?.patientID || 'N/A'}</Typography>
-            </Grid>
-            <Grid item xs={12} md={2}>
-              <Typography variant="body2" color="text.secondary">Study Date:</Typography>
-              <Typography variant="body1">
-                {studyData?.studyDate ? 
-                  new Date(studyData.studyDate.replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3')).toLocaleDateString() 
-                  : 'N/A'
-                }
-              </Typography>
-            </Grid>
-            <Grid item xs={12} md={2}>
-              <Typography variant="body2" color="text.secondary">Modality:</Typography>
-              <Chip label={studyData?.modality || 'Unknown'} size="small" color="primary" />
-            </Grid>
-            <Grid item xs={12} md={3}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+      <Box sx={{ 
+        height: '100vh', 
+        bgcolor: '#000',
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+      }}>
+        {/* Modern Header */}
+        <Fade in={showToolbar}>
+          <Box
+            sx={{
+              position: 'relative',
+              zIndex: 1000,
+              backdropFilter: 'blur(20px)',
+              bgcolor: alpha('#000', 0.8),
+              borderBottom: `1px solid ${alpha('#fff', 0.1)}`,
+            }}
+          >
+            <Box sx={{ 
+              px: 3, 
+              py: 1.5,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            }}>
+              {/* Left Section */}
+              <Stack direction="row" spacing={2} alignItems="center">
+                <Tooltip title="Back to Dashboard">
+                  <IconButton
+                    onClick={() => navigate('/dashboard')}
+                    sx={{
+                      color: 'white',
+                      bgcolor: alpha('#fff', 0.1),
+                      '&:hover': { bgcolor: alpha('#fff', 0.2) },
+                      width: 36,
+                      height: 36,
+                    }}
+                  >
+                    <ArrowBack fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+                
                 <Box>
-                  <Typography variant="body2" color="text.secondary">Description:</Typography>
-                  <Typography variant="body1">{studyData?.studyDescription || 'N/A'}</Typography>
+                  <Typography variant="body1" sx={{ color: 'white', fontWeight: 600, fontSize: '0.95rem' }}>
+                    {studyData?.patientName?.replace('^', ', ') || 'Unknown Patient'}
+                  </Typography>
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    <Typography variant="caption" sx={{ color: alpha('#fff', 0.6) }}>
+                      ID: {studyData?.patientID || 'N/A'}
+                    </Typography>
+                    <Box sx={{ width: 3, height: 3, borderRadius: '50%', bgcolor: alpha('#fff', 0.4) }} />
+                    <Typography variant="caption" sx={{ color: alpha('#fff', 0.6) }}>
+                      {studyData?.studyDate ? 
+                        new Date(studyData.studyDate.replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3')).toLocaleDateString() 
+                        : 'N/A'
+                      }
+                    </Typography>
+                    <Box sx={{ width: 3, height: 3, borderRadius: '50%', bgcolor: alpha('#fff', 0.4) }} />
+                    <Chip 
+                      label={studyData?.modality || 'Unknown'} 
+                      size="small" 
+                      sx={{ 
+                        height: 20,
+                        fontSize: '0.7rem',
+                        bgcolor: alpha(theme.palette.primary.main, 0.2),
+                        color: theme.palette.primary.light,
+                        border: `1px solid ${alpha(theme.palette.primary.main, 0.3)}`,
+                      }}
+                    />
+                  </Stack>
                 </Box>
-              
-              </Box>
-            </Grid>
-          </Grid>
-            <Box sx={{ width: 350, bgcolor: 'grey.50', borderRight: 1, borderColor: 'divider', display: 'flex', flexDirection: 'column' }}>
-            Patient Context Panel
-            {patientContext && (
-              <Box sx={{ maxHeight: '40%', overflow: 'auto' }}>
-                <PatientContextPanel 
-                  study={null}
-                />
-              </Box>
-            )}
-            
-            {/* Series List */}
-            <Box sx={{ flex: 1, p: 2, overflow: 'auto' }}>
-              <Typography variant="h6" gutterBottom>Series ({studyData?.series?.length || 0})</Typography>
-              {studyData?.series?.map((series: any, index: number) => (
-                <Paper 
-                  key={series.seriesInstanceUID}
-                  sx={{ 
-                    p: 2, 
-                    mb: 1, 
-                    cursor: 'pointer',
-                    bgcolor: 'white',
-                    '&:hover': { bgcolor: 'grey.100' }
-                  }}
-                >
-                  <Typography variant="body1" fontWeight="bold">{series.seriesDescription}</Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {series.numberOfInstances} images • {series.modality}
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    Series: {series.seriesNumber}
-                  </Typography>
-                </Paper>
-              ))}
+              </Stack>
+
+              {/* Center Section - View Mode Selector */}
+              <Stack direction="row" spacing={0.5} sx={{
+                bgcolor: alpha('#fff', 0.05),
+                borderRadius: 2,
+                p: 0.5,
+              }}>
+                <Tooltip title="2D Stack View">
+                  <ButtonBase
+                    onClick={() => setViewerType('legacy')}
+                    sx={{
+                      px: 2,
+                      py: 1,
+                      borderRadius: 1.5,
+                      color: viewerType === 'legacy' ? 'white' : alpha('#fff', 0.6),
+                      bgcolor: viewerType === 'legacy' ? alpha(theme.palette.primary.main, 0.3) : 'transparent',
+                      transition: 'all 0.2s',
+                      '&:hover': {
+                        bgcolor: viewerType === 'legacy' ? alpha(theme.palette.primary.main, 0.4) : alpha('#fff', 0.1),
+                        color: 'white',
+                      },
+                    }}
+                  >
+                    <Stack direction="row" spacing={1} alignItems="center">
+                      <Layers fontSize="small" />
+                      <Typography variant="caption" sx={{ fontWeight: 600 }}>
+                        2D Stack
+                      </Typography>
+                    </Stack>
+                  </ButtonBase>
+                </Tooltip>
+                
+                <Tooltip title="Cornerstone View">
+                  <ButtonBase
+                    onClick={() => setViewerType('cornerstone3d')}
+                    sx={{
+                      px: 2,
+                      py: 1,
+                      borderRadius: 1.5,
+                      color: viewerType === 'cornerstone3d' ? 'white' : alpha('#fff', 0.6),
+                      bgcolor: viewerType === 'cornerstone3d' ? alpha(theme.palette.primary.main, 0.3) : 'transparent',
+                      transition: 'all 0.2s',
+                      '&:hover': {
+                        bgcolor: viewerType === 'cornerstone3d' ? alpha(theme.palette.primary.main, 0.4) : alpha('#fff', 0.1),
+                        color: 'white',
+                      },
+                    }}
+                  >
+                    <Stack direction="row" spacing={1} alignItems="center">
+                      <GridOn fontSize="small" />
+                      <Typography variant="caption" sx={{ fontWeight: 600 }}>
+                        Cornerstone
+                      </Typography>
+                    </Stack>
+                  </ButtonBase>
+                </Tooltip>
+                
+                <Tooltip title="3D Volume View">
+                  <ButtonBase
+                    onClick={() => setViewerType('3d')}
+                    sx={{
+                      px: 2,
+                      py: 1,
+                      borderRadius: 1.5,
+                      color: viewerType === '3d' ? 'white' : alpha('#fff', 0.6),
+                      bgcolor: viewerType === '3d' ? alpha(theme.palette.primary.main, 0.3) : 'transparent',
+                      transition: 'all 0.2s',
+                      '&:hover': {
+                        bgcolor: viewerType === '3d' ? alpha(theme.palette.primary.main, 0.4) : alpha('#fff', 0.1),
+                        color: 'white',
+                      },
+                    }}
+                  >
+                    <Stack direction="row" spacing={1} alignItems="center">
+                      <ViewInAr fontSize="small" />
+                      <Typography variant="caption" sx={{ fontWeight: 600 }}>
+                        3D Volume
+                      </Typography>
+                    </Stack>
+                  </ButtonBase>
+                </Tooltip>
+              </Stack>
+
+              {/* Right Section - Actions */}
+              <Stack direction="row" spacing={1}>
+                <Tooltip title="Share Study">
+                  <IconButton
+                    sx={{
+                      color: alpha('#fff', 0.6),
+                      bgcolor: alpha('#fff', 0.05),
+                      '&:hover': { bgcolor: alpha('#fff', 0.1), color: 'white' },
+                      width: 36,
+                      height: 36,
+                    }}
+                  >
+                    <Share fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+                
+                <Tooltip title="Download">
+                  <IconButton
+                    sx={{
+                      color: alpha('#fff', 0.6),
+                      bgcolor: alpha('#fff', 0.05),
+                      '&:hover': { bgcolor: alpha('#fff', 0.1), color: 'white' },
+                      width: 36,
+                      height: 36,
+                    }}
+                  >
+                    <Download fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+                
+                <Tooltip title={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}>
+                  <IconButton
+                    onClick={toggleFullscreen}
+                    sx={{
+                      color: alpha('#fff', 0.6),
+                      bgcolor: alpha('#fff', 0.05),
+                      '&:hover': { bgcolor: alpha('#fff', 0.1), color: 'white' },
+                      width: 36,
+                      height: 36,
+                    }}
+                  >
+                    {isFullscreen ? <FullscreenExit fontSize="small" /> : <Fullscreen fontSize="small" />}
+                  </IconButton>
+                </Tooltip>
+              </Stack>
             </Box>
           </Box>
-        </Box>}
+        </Fade>
 
-        <Box sx={{ display: 'flex', height: 'calc(100vh - 140px)' }}>
-          {/* Left Panel - Patient Context & Series */}
-        
-
-          {/* Main Content Area */}
+        {/* Main Content Area */}
+        <Box sx={{ 
+          flex: 1, 
+          display: 'flex',
+          position: 'relative',
+          overflow: 'hidden',
+        }}>
+          {/* Viewer Area with Tabs */}
           <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-            {/* Tab Navigation */}
-            <Box sx={{ borderBottom: 1, borderColor: 'divider', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Tabs value={activeTab} onChange={(_, newValue) => setActiveTab(newValue)}>
+            {/* Modern Tab Navigation */}
+            <Box sx={{ 
+              borderBottom: `1px solid ${alpha('#fff', 0.1)}`,
+              bgcolor: alpha('#000', 0.5),
+              backdropFilter: 'blur(10px)',
+            }}>
+              <Tabs 
+                value={activeTab} 
+                onChange={(_, newValue) => setActiveTab(newValue)}
+                sx={{
+                  '& .MuiTab-root': {
+                    color: alpha('#fff', 0.6),
+                    textTransform: 'none',
+                    fontWeight: 600,
+                    '&.Mui-selected': {
+                      color: 'white',
+                    },
+                  },
+                  '& .MuiTabs-indicator': {
+                    bgcolor: theme.palette.primary.main,
+                  },
+                }}
+              >
                 <Tab label="Image Viewer" />
                 <Tab label="AI Analysis" />
                 <Tab label="Similar Cases" />
                 <Tab label="Structured Reporting" />
               </Tabs>
-              
-              {/* Viewer Mode Toggle */}
-              {activeTab === 0 && (
-                <Box sx={{ pr: 2 }}>
-                  <ToggleButtonGroup
-                    value={viewerType}
-                    exclusive
-                    onChange={(_, newValue) => {
-                      if (newValue !== null) {
-                        setViewerType(newValue)
-                      }
-                    }}
-                    size="small"
-                  >
-                    <ToggleButton value="legacy">
-                      2D Stack
-                    </ToggleButton>
-                    <ToggleButton value="cornerstone3d">
-                      Cornerstone
-                    </ToggleButton>
-                    <ToggleButton value="3d">
-                      🎨 3D Volume
-                    </ToggleButton>
-                  </ToggleButtonGroup>
-                </Box>
-              )}
             </Box>
 
             {/* Tab Content */}
-            <Box sx={{ flex: 1 }}>
+            <Box sx={{ flex: 1, position: 'relative' }}>
               <TabPanel value={activeTab} index={0}>
                 {studyData ? (
                   viewerType === '3d' ? (
@@ -439,7 +611,7 @@ const ViewerPage: React.FC = () => {
 
               <TabPanel value={activeTab} index={3}>
                 {studyData ? (
-                  <ReportingInterface
+                  <EnhancedReportingInterface
                     studyInstanceUID={studyData.studyInstanceUID}
                     patientId={studyData.patientID}
                     onReportFinalized={(report) => {
@@ -455,8 +627,137 @@ const ViewerPage: React.FC = () => {
                   </Box>
                 )}
               </TabPanel>
+              
+              {/* Floating Toolbar - Only show on Image Viewer tab */}
+              {activeTab === 0 && (
+                <Fade in={showToolbar}>
+                  <Paper
+                    sx={{
+                      position: 'absolute',
+                      bottom: 24,
+                      left: '50%',
+                      transform: 'translateX(-50%)',
+                      backdropFilter: 'blur(20px)',
+                      bgcolor: alpha('#000', 0.7),
+                      border: `1px solid ${alpha('#fff', 0.1)}`,
+                      borderRadius: 3,
+                      px: 2,
+                      py: 1,
+                      display: 'flex',
+                      gap: 1,
+                      zIndex: 100,
+                    }}
+                  >
+                    <Tooltip title="Zoom In">
+                      <IconButton size="small" sx={{ color: 'white' }}>
+                        <ZoomIn fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Zoom Out">
+                      <IconButton size="small" sx={{ color: 'white' }}>
+                        <ZoomOut fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                    <Divider orientation="vertical" flexItem sx={{ bgcolor: alpha('#fff', 0.2), mx: 0.5 }} />
+                    <Tooltip title="Rotate">
+                      <IconButton size="small" sx={{ color: 'white' }}>
+                        <RotateRight fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Contrast">
+                      <IconButton size="small" sx={{ color: 'white' }}>
+                        <Contrast fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Brightness">
+                      <IconButton size="small" sx={{ color: 'white' }}>
+                        <Brightness7 fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                    <Divider orientation="vertical" flexItem sx={{ bgcolor: alpha('#fff', 0.2), mx: 0.5 }} />
+                    <Tooltip title="Settings">
+                      <IconButton size="small" sx={{ color: 'white' }}>
+                        <Settings fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                  </Paper>
+                </Fade>
+              )}
             </Box>
           </Box>
+
+          {/* Series Thumbnails Strip */}
+          {studyData?.series && studyData.series.length > 1 && (
+            <Fade in={showToolbar}>
+              <Box
+                sx={{
+                  position: 'absolute',
+                  left: 16,
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  backdropFilter: 'blur(20px)',
+                  bgcolor: alpha('#000', 0.7),
+                  border: `1px solid ${alpha('#fff', 0.1)}`,
+                  borderRadius: 2,
+                  p: 1,
+                  maxHeight: '60vh',
+                  overflow: 'auto',
+                  zIndex: 100,
+                  '&::-webkit-scrollbar': {
+                    width: 4,
+                  },
+                  '&::-webkit-scrollbar-thumb': {
+                    bgcolor: alpha('#fff', 0.3),
+                    borderRadius: 2,
+                  },
+                }}
+              >
+                <Stack spacing={1}>
+                  {studyData.series.map((series: any) => (
+                    <Tooltip key={series.seriesInstanceUID} title={series.seriesDescription} placement="right">
+                      <ButtonBase
+                        onClick={() => setSelectedSeries(series)}
+                        sx={{
+                          width: 80,
+                          height: 80,
+                          borderRadius: 1.5,
+                          border: `2px solid ${
+                            selectedSeries?.seriesInstanceUID === series.seriesInstanceUID
+                              ? theme.palette.primary.main
+                              : alpha('#fff', 0.2)
+                          }`,
+                          bgcolor: alpha('#fff', 0.05),
+                          overflow: 'hidden',
+                          transition: 'all 0.2s',
+                          '&:hover': {
+                            border: `2px solid ${theme.palette.primary.light}`,
+                            transform: 'scale(1.05)',
+                          },
+                        }}
+                      >
+                        <Box sx={{ 
+                          width: '100%', 
+                          height: '100%', 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          justifyContent: 'center',
+                          flexDirection: 'column',
+                          p: 1,
+                        }}>
+                          <Typography variant="caption" sx={{ color: 'white', fontWeight: 600 }}>
+                            #{series.seriesNumber}
+                          </Typography>
+                          <Typography variant="caption" sx={{ color: alpha('#fff', 0.6), fontSize: '0.65rem' }}>
+                            {series.numberOfInstances} img
+                          </Typography>
+                        </Box>
+                      </ButtonBase>
+                    </Tooltip>
+                  ))}
+                </Stack>
+              </Box>
+            </Fade>
+          )}
         </Box>
       </Box>
     </>

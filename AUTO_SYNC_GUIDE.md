@@ -147,7 +147,7 @@ db.studies.find({ patientID: "NA" })
 
 ### Via API
 ```bash
-curl https://apiradio.varnaamedicalbillingsolutions.com/api/dicom/studies
+curl http://localhost:8001/api/dicom/studies
 ```
 
 ### Via Viewer

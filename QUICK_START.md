@@ -44,7 +44,7 @@ npm run watch-remote
 
 ### Method 2: Via API
 ```bash
-curl -X POST https://apiradio.varnaamedicalbillingsolutions.com/api/dicom/upload \
+curl -X POST http://localhost:8001/api/dicom/upload \
   -H "Authorization: Bearer YOUR_TOKEN" \
   -F "file=@your-dicom-file.dcm"
 ```
@@ -79,13 +79,13 @@ http://localhost:5173/viewer
 ### API Endpoints
 ```bash
 # Get all studies
-curl https://apiradio.varnaamedicalbillingsolutions.com/api/dicom/studies
+curl http://localhost:8001/api/dicom/studies
 
 # Get specific study
-curl https://apiradio.varnaamedicalbillingsolutions.com/api/dicom/studies/{studyUID}
+curl http://localhost:8001/api/dicom/studies/{studyUID}
 
 # Get study frames
-curl https://apiradio.varnaamedicalbillingsolutions.com/api/dicom/studies/{studyUID}/frames/0
+curl http://localhost:8001/api/dicom/studies/{studyUID}/frames/0
 ```
 
 ---
@@ -141,7 +141,7 @@ Password: orthanc_secure_2024
 
 ### Local API Server
 ```
-URL: https://apiradio.varnaamedicalbillingsolutions.com
+URL: http://localhost:8001
 Port: 8001
 ```
 

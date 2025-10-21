@@ -40,6 +40,7 @@ import type {
 } from '@medical-imaging/shared-types'
 import { FindingEditor } from './FindingEditor'
 import { MeasurementEditor } from './MeasurementEditor'
+import { VoiceDictationEnhanced } from './VoiceDictationEnhanced'
 
 interface ReportEditorProps {
   report: StructuredReport
@@ -468,6 +469,15 @@ export const ReportEditor: React.FC<ReportEditorProps> = ({
           <Typography variant="h6">Impression</Typography>
         </AccordionSummary>
         <AccordionDetails>
+          <Box sx={{ mb: 2 }}>
+            <VoiceDictationEnhanced
+              onTranscript={(text) => setImpression(prev => prev + ' ' + text)}
+              onError={(error) => console.error('Voice dictation error:', error)}
+              disabled={disabled}
+              showTranscriptPreview={true}
+              autoInsertPunctuation={true}
+            />
+          </Box>
           <TextField
             fullWidth
             multiline

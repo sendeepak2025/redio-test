@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useState } from "react"
+import React, { useEffect, useState, useMemo } from "react"
 import {
   Box,
   Paper,
@@ -25,6 +25,18 @@ import {
   ListItemButton,
   ListItemText,
   ListItemIcon,
+  InputAdornment,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Tabs,
+  Tab,
+  Tooltip,
+  Fade,
+  Grow,
+  alpha,
+  useTheme,
 } from "@mui/material"
 import {
   People,
@@ -40,6 +52,13 @@ import {
   CheckCircle,
   Download,
   FileDownload,
+  Search,
+  Mic,
+  FilterList,
+  Clear,
+  Sort,
+  ViewModule,
+  ViewList,
 } from "@mui/icons-material"
 import { Helmet } from "react-helmet-async"
 import {
@@ -72,6 +91,10 @@ interface PatientStudyItem {
 }
 
 const PatientsPage: React.FC = () => {
+  const theme = useTheme()
+  const navigate = useNavigate()
+  
+  // Existing state
   const [tabIndex, setTabIndex] = useState(0)
   const [patients, setPatients] = useState<PatientItem[]>([])
   const [selectedPatientID, setSelectedPatientID] = useState<string | null>(null)
@@ -99,7 +122,21 @@ const PatientsPage: React.FC = () => {
   const [exportDialogOpen, setExportDialogOpen] = useState(false)
   const [exportTarget, setExportTarget] = useState<{ type: 'patient' | 'study', id: string } | null>(null)
   const [includeImages, setIncludeImages] = useState(true)
-  const navigate = useNavigate()
+  
+  // Enhanced search and filter state
+  const [searchQuery, setSearchQuery] = useState("")
+  const [filterSex, setFilterSex] = useState<string>("all")
+  const [filterModality, setFilterModality] = useState<string>("all")
+  const [sortBy, setSortBy] = useState<string>("name")
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
+  const [isListening, setIsListening] = useState(false)
+  const [voiceSupported, setVoiceSupported] = useState(false)
+
+  // Check voice recognition support
+  useEffect(() => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+    setVoiceSupported(!!SpeechRecognition)
+  }, [])
 
   useEffect(() => {
     const loadPatients = async () => {
@@ -207,6 +244,97 @@ const PatientsPage: React.FC = () => {
 
   const selectedPatient = patients.find((p) => p.patientID === selectedPatientID)
 
+  // Voice search handler
+  const handleVoiceSearch = () => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+    if (!SpeechRecognition) {
+      setError("Voice recognition not supported in this browser")
+      return
+    }
+
+    const recognition = new SpeechRecognition()
+    recognition.lang = 'en-US'
+    recognition.continuous = false
+    recognition.interimResults = false
+
+    recognition.onstart = () => {
+      setIsListening(true)
+    }
+
+    recognition.onresult = (event: any) => {
+      const transcript = event.results[0][0].transcript
+      setSearchQuery(transcript)
+      setIsListening(false)
+    }
+
+    recognition.onerror = (event: any) => {
+      console.error('Voice recognition error:', event.error)
+      setError(`Voice recognition error: ${event.error}`)
+      setIsListening(false)
+    }
+
+    recognition.onend = () => {
+      setIsListening(false)
+    }
+
+    recognition.start()
+  }
+
+  // Filtered and sorted patients
+  const filteredPatients = useMemo(() => {
+    let filtered = patients.filter((patient) => {
+      const matchesSearch = 
+        searchQuery === "" ||
+        patient.patientName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        patient.patientID.toLowerCase().includes(searchQuery.toLowerCase())
+      
+      const matchesSex = filterSex === "all" || patient.sex === filterSex
+      
+      return matchesSearch && matchesSex
+    })
+
+    // Sort patients
+    filtered.sort((a, b) => {
+      switch (sortBy) {
+        case "name":
+          return (a.patientName || "").localeCompare(b.patientName || "")
+        case "id":
+          return a.patientID.localeCompare(b.patientID)
+        case "studies":
+          return (b.studyCount || 0) - (a.studyCount || 0)
+        case "date":
+          return (b.birthDate || "").localeCompare(a.birthDate || "")
+        default:
+          return 0
+      }
+    })
+
+    return filtered
+  }, [patients, searchQuery, filterSex, sortBy])
+
+  // Filtered and sorted studies
+  const filteredStudies = useMemo(() => {
+    let filtered = allStudies.filter((study) => {
+      const matchesSearch = 
+        searchQuery === "" ||
+        study.patientName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        study.patientID.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        study.studyDescription?.toLowerCase().includes(searchQuery.toLowerCase())
+      
+      const matchesModality = filterModality === "all" || study.modality === filterModality
+      
+      return matchesSearch && matchesModality
+    })
+
+    return filtered
+  }, [allStudies, searchQuery, filterModality])
+
+  // Get unique modalities for filter
+  const availableModalities = useMemo(() => {
+    const modalities = new Set(allStudies.map(s => s.modality))
+    return Array.from(modalities).sort()
+  }, [allStudies])
+
   const handlePacsUploadOpen = () => {
     setPacsUploadOpen(true)
     setPacsUploadSuccess(false)
@@ -238,7 +366,7 @@ const PatientsPage: React.FC = () => {
         formData.append('dicom', file)
       })
 
-      const response = await fetch('https://apiradio.varnaamedicalbillingsolutions.com/api/pacs/upload', {
+      const response = await fetch('http://localhost:8001/api/pacs/upload', {
         method: 'POST',
         body: formData,
       })
@@ -317,15 +445,33 @@ const PatientsPage: React.FC = () => {
         <title>Patients & Studies</title>
       </Helmet>
 
-      <Box sx={{  height: "100vh", bgcolor: "grey.50" }}>
-     
+      <Box sx={{ minHeight: "100vh", bgcolor: "grey.50" }}>
+        {/* Tabs */}
+        <Paper elevation={0} sx={{ borderBottom: 1, borderColor: "divider" }}>
+          <Box sx={{ px: 4, pt: 2 }}>
+            <Tabs value={tabIndex} onChange={(e, v) => setTabIndex(v)}>
+              <Tab 
+                icon={<People />} 
+                label="Patients" 
+                iconPosition="start"
+                sx={{ textTransform: "none", fontSize: "1rem", fontWeight: 600 }}
+              />
+              <Tab 
+                icon={<Science />} 
+                label="All Studies" 
+                iconPosition="start"
+                sx={{ textTransform: "none", fontSize: "1rem", fontWeight: 600 }}
+              />
+            </Tabs>
+          </Box>
+        </Paper>
 
         {/* Main Content */}
-        <Box >
+        <Box>
           {tabIndex === 0 ? (
             <Box sx={{ p: 4 }}>
               <Box sx={{ maxWidth: "100%", mx: "auto" }}>
-                <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 4 }}>
+                <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 3 }}>
                   <Box>
                     <Typography variant="h4" fontWeight="bold" gutterBottom>
                       Patients
@@ -356,14 +502,185 @@ const PatientsPage: React.FC = () => {
                   </Stack>
                 </Stack>
 
+                {/* Enhanced Search and Filters */}
+                <Fade in timeout={300}>
+                  <Paper 
+                    elevation={0} 
+                    sx={{ 
+                      p: 3, 
+                      mb: 3, 
+                      border: 1, 
+                      borderColor: "divider",
+                      background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.02)} 0%, ${alpha(theme.palette.primary.main, 0.01)} 100%)`,
+                    }}
+                  >
+                    <Grid container spacing={2} alignItems="center">
+                      <Grid item xs={12} md={5}>
+                        <TextField
+                          fullWidth
+                          placeholder="Search by patient name or ID..."
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          InputProps={{
+                            startAdornment: (
+                              <InputAdornment position="start">
+                                <Search color="action" />
+                              </InputAdornment>
+                            ),
+                            endAdornment: searchQuery || isListening ? (
+                              <InputAdornment position="end">
+                                {isListening ? (
+                                  <CircularProgress size={20} />
+                                ) : (
+                                  <IconButton size="small" onClick={() => setSearchQuery("")}>
+                                    <Clear fontSize="small" />
+                                  </IconButton>
+                                )}
+                              </InputAdornment>
+                            ) : null,
+                          }}
+                          sx={{
+                            '& .MuiOutlinedInput-root': {
+                              bgcolor: 'background.paper',
+                            }
+                          }}
+                        />
+                      </Grid>
+                      
+                      {voiceSupported && (
+                        <Grid item xs={12} sm={6} md={1}>
+                          <Tooltip title="Voice Search">
+                            <IconButton
+                              onClick={handleVoiceSearch}
+                              disabled={isListening}
+                              sx={{
+                                bgcolor: isListening ? 'error.main' : alpha(theme.palette.primary.main, 0.1),
+                                color: isListening ? 'white' : 'primary.main',
+                                '&:hover': {
+                                  bgcolor: isListening ? 'error.dark' : alpha(theme.palette.primary.main, 0.2),
+                                },
+                                width: 48,
+                                height: 48,
+                              }}
+                            >
+                              <Mic />
+                            </IconButton>
+                          </Tooltip>
+                        </Grid>
+                      )}
+                      
+                      <Grid item xs={12} sm={6} md={2}>
+                        <FormControl fullWidth size="small">
+                          <InputLabel>Filter by Sex</InputLabel>
+                          <Select
+                            value={filterSex}
+                            label="Filter by Sex"
+                            onChange={(e) => setFilterSex(e.target.value)}
+                            sx={{ bgcolor: 'background.paper' }}
+                          >
+                            <MenuItem value="all">All</MenuItem>
+                            <MenuItem value="M">Male</MenuItem>
+                            <MenuItem value="F">Female</MenuItem>
+                            <MenuItem value="O">Other</MenuItem>
+                          </Select>
+                        </FormControl>
+                      </Grid>
+                      
+                      <Grid item xs={12} sm={6} md={2}>
+                        <FormControl fullWidth size="small">
+                          <InputLabel>Sort By</InputLabel>
+                          <Select
+                            value={sortBy}
+                            label="Sort By"
+                            onChange={(e) => setSortBy(e.target.value)}
+                            sx={{ bgcolor: 'background.paper' }}
+                          >
+                            <MenuItem value="name">Name</MenuItem>
+                            <MenuItem value="id">Patient ID</MenuItem>
+                            <MenuItem value="studies">Study Count</MenuItem>
+                            <MenuItem value="date">Birth Date</MenuItem>
+                          </Select>
+                        </FormControl>
+                      </Grid>
+                      
+                      <Grid item xs={12} sm={6} md={2}>
+                        <Stack direction="row" spacing={1} justifyContent="flex-end">
+                          <Tooltip title="Grid View">
+                            <IconButton
+                              onClick={() => setViewMode("grid")}
+                              sx={{
+                                bgcolor: viewMode === "grid" ? alpha(theme.palette.primary.main, 0.1) : 'transparent',
+                                color: viewMode === "grid" ? 'primary.main' : 'action.active',
+                              }}
+                            >
+                              <ViewModule />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="List View">
+                            <IconButton
+                              onClick={() => setViewMode("list")}
+                              sx={{
+                                bgcolor: viewMode === "list" ? alpha(theme.palette.primary.main, 0.1) : 'transparent',
+                                color: viewMode === "list" ? 'primary.main' : 'action.active',
+                              }}
+                            >
+                              <ViewList />
+                            </IconButton>
+                          </Tooltip>
+                        </Stack>
+                      </Grid>
+                    </Grid>
+                    
+                    {(searchQuery || filterSex !== "all") && (
+                      <Box sx={{ mt: 2, display: 'flex', gap: 1, alignItems: 'center' }}>
+                        <Typography variant="caption" color="text.secondary">
+                          Active filters:
+                        </Typography>
+                        {searchQuery && (
+                          <Chip
+                            label={`Search: "${searchQuery}"`}
+                            size="small"
+                            onDelete={() => setSearchQuery("")}
+                          />
+                        )}
+                        {filterSex !== "all" && (
+                          <Chip
+                            label={`Sex: ${filterSex}`}
+                            size="small"
+                            onDelete={() => setFilterSex("all")}
+                          />
+                        )}
+                        <Button
+                          size="small"
+                          onClick={() => {
+                            setSearchQuery("")
+                            setFilterSex("all")
+                          }}
+                          sx={{ textTransform: "none", ml: 1 }}
+                        >
+                          Clear All
+                        </Button>
+                      </Box>
+                    )}
+                  </Paper>
+                </Fade>
+
+                {/* Results Count */}
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="body2" color="text.secondary">
+                    Showing {filteredPatients.length} of {patients.length} patients
+                  </Typography>
+                </Box>
+
                 {loadingPatients ? (
                   <Box sx={{ display: "flex", justifyContent: "center", py: 10 }}>
                     <CircularProgress size={48} />
                   </Box>
-                ) : (
+                ) : viewMode === "grid" ? (
                   <Grid container spacing={3}>
-                    {patients.map((patient) => (
+                    {filteredPatients.map((patient, index) => (
                       <Grid item xs={12} sm={6} md={4} key={patient.patientID}>
+                        <Grow in timeout={300 + index * 50}>
                         <Card
                           elevation={0}
                           sx={{
@@ -429,8 +746,32 @@ const PatientsPage: React.FC = () => {
                             </Button>
                           </Box>
                         </Card>
+                        </Grow>
                       </Grid>
                     ))}
+                    {filteredPatients.length === 0 && patients.length > 0 && (
+                      <Grid item xs={12}>
+                        <Box sx={{ textAlign: "center", py: 10 }}>
+                          <Search sx={{ fontSize: 80, color: "text.disabled", mb: 2 }} />
+                          <Typography variant="h6" color="text.secondary" gutterBottom>
+                            No patients match your search
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            Try adjusting your filters or search query
+                          </Typography>
+                          <Button
+                            variant="outlined"
+                            onClick={() => {
+                              setSearchQuery("")
+                              setFilterSex("all")
+                            }}
+                            sx={{ mt: 2, textTransform: "none" }}
+                          >
+                            Clear Filters
+                          </Button>
+                        </Box>
+                      </Grid>
+                    )}
                     {patients.length === 0 && (
                       <Grid item xs={12}>
                         <Box sx={{ textAlign: "center", py: 10 }}>
@@ -445,13 +786,82 @@ const PatientsPage: React.FC = () => {
                       </Grid>
                     )}
                   </Grid>
+                ) : (
+                  <Paper elevation={0} sx={{ border: 1, borderColor: "divider" }}>
+                    <List disablePadding>
+                      {filteredPatients.map((patient, idx) => (
+                        <React.Fragment key={patient.patientID}>
+                          <Fade in timeout={300 + idx * 30}>
+                            <ListItemButton
+                              onClick={() => handlePatientClick(patient.patientID)}
+                              sx={{ py: 2.5, px: 3 }}
+                            >
+                              <ListItemIcon>
+                                <Avatar
+                                  sx={{
+                                    width: 48,
+                                    height: 48,
+                                    bgcolor: "primary.main",
+                                    fontSize: "1.2rem",
+                                    fontWeight: "bold",
+                                  }}
+                                >
+                                  {patient.patientName?.charAt(0) || patient.patientID.charAt(0)}
+                                </Avatar>
+                              </ListItemIcon>
+                              <ListItemText
+                                primary={
+                                  <Stack direction="row" spacing={1} alignItems="center">
+                                    <Typography variant="subtitle1" fontWeight="bold">
+                                      {patient.patientName || "Unknown"}
+                                    </Typography>
+                                    <Chip 
+                                      label={`${patient.studyCount || 0} studies`} 
+                                      size="small" 
+                                      color="primary" 
+                                    />
+                                    {patient.sex && (
+                                      <Chip label={patient.sex} size="small" variant="outlined" />
+                                    )}
+                                  </Stack>
+                                }
+                                secondary={
+                                  <Box sx={{ mt: 0.5 }}>
+                                    <Typography variant="body2" color="text.secondary">
+                                      ID: {patient.patientID}
+                                    </Typography>
+                                    {patient.birthDate && (
+                                      <Typography variant="caption" color="text.secondary">
+                                        DOB: {patient.birthDate}
+                                      </Typography>
+                                    )}
+                                  </Box>
+                                }
+                              />
+                              <IconButton
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleExportPatient(patient.patientID)
+                                }}
+                                sx={{ mr: 1 }}
+                              >
+                                <Download />
+                              </IconButton>
+                              <ChevronRight color="action" />
+                            </ListItemButton>
+                          </Fade>
+                          {idx < filteredPatients.length - 1 && <Divider />}
+                        </React.Fragment>
+                      ))}
+                    </List>
+                  </Paper>
                 )}
               </Box>
             </Box>
           ) : (
             <Box sx={{ p: 4 }}>
               <Box sx={{ maxWidth: 1400, mx: "auto" }}>
-                <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 4 }}>
+                <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 3 }}>
                   <Box>
                     <Typography variant="h4" fontWeight="bold" gutterBottom>
                       All Studies
@@ -471,6 +881,134 @@ const PatientsPage: React.FC = () => {
                   </Button>
                 </Stack>
 
+                {/* Enhanced Search and Filters for Studies */}
+                <Fade in timeout={300}>
+                  <Paper 
+                    elevation={0} 
+                    sx={{ 
+                      p: 3, 
+                      mb: 3, 
+                      border: 1, 
+                      borderColor: "divider",
+                      background: `linear-gradient(135deg, ${alpha(theme.palette.secondary.main, 0.02)} 0%, ${alpha(theme.palette.secondary.main, 0.01)} 100%)`,
+                    }}
+                  >
+                    <Grid container spacing={2} alignItems="center">
+                      <Grid item xs={12} md={6}>
+                        <TextField
+                          fullWidth
+                          placeholder="Search by patient name, ID, or study description..."
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          InputProps={{
+                            startAdornment: (
+                              <InputAdornment position="start">
+                                <Search color="action" />
+                              </InputAdornment>
+                            ),
+                            endAdornment: searchQuery || isListening ? (
+                              <InputAdornment position="end">
+                                {isListening ? (
+                                  <CircularProgress size={20} />
+                                ) : (
+                                  <IconButton size="small" onClick={() => setSearchQuery("")}>
+                                    <Clear fontSize="small" />
+                                  </IconButton>
+                                )}
+                              </InputAdornment>
+                            ) : null,
+                          }}
+                          sx={{
+                            '& .MuiOutlinedInput-root': {
+                              bgcolor: 'background.paper',
+                            }
+                          }}
+                        />
+                      </Grid>
+                      
+                      {voiceSupported && (
+                        <Grid item xs={12} sm={6} md={1}>
+                          <Tooltip title="Voice Search">
+                            <IconButton
+                              onClick={handleVoiceSearch}
+                              disabled={isListening}
+                              sx={{
+                                bgcolor: isListening ? 'error.main' : alpha(theme.palette.secondary.main, 0.1),
+                                color: isListening ? 'white' : 'secondary.main',
+                                '&:hover': {
+                                  bgcolor: isListening ? 'error.dark' : alpha(theme.palette.secondary.main, 0.2),
+                                },
+                                width: 48,
+                                height: 48,
+                              }}
+                            >
+                              <Mic />
+                            </IconButton>
+                          </Tooltip>
+                        </Grid>
+                      )}
+                      
+                      <Grid item xs={12} sm={6} md={3}>
+                        <FormControl fullWidth size="small">
+                          <InputLabel>Filter by Modality</InputLabel>
+                          <Select
+                            value={filterModality}
+                            label="Filter by Modality"
+                            onChange={(e) => setFilterModality(e.target.value)}
+                            sx={{ bgcolor: 'background.paper' }}
+                          >
+                            <MenuItem value="all">All Modalities</MenuItem>
+                            {availableModalities.map((modality) => (
+                              <MenuItem key={modality} value={modality}>
+                                {modality}
+                              </MenuItem>
+                            ))}
+                          </Select>
+                        </FormControl>
+                      </Grid>
+                    </Grid>
+                    
+                    {(searchQuery || filterModality !== "all") && (
+                      <Box sx={{ mt: 2, display: 'flex', gap: 1, alignItems: 'center' }}>
+                        <Typography variant="caption" color="text.secondary">
+                          Active filters:
+                        </Typography>
+                        {searchQuery && (
+                          <Chip
+                            label={`Search: "${searchQuery}"`}
+                            size="small"
+                            onDelete={() => setSearchQuery("")}
+                          />
+                        )}
+                        {filterModality !== "all" && (
+                          <Chip
+                            label={`Modality: ${filterModality}`}
+                            size="small"
+                            onDelete={() => setFilterModality("all")}
+                          />
+                        )}
+                        <Button
+                          size="small"
+                          onClick={() => {
+                            setSearchQuery("")
+                            setFilterModality("all")
+                          }}
+                          sx={{ textTransform: "none", ml: 1 }}
+                        >
+                          Clear All
+                        </Button>
+                      </Box>
+                    )}
+                  </Paper>
+                </Fade>
+
+                {/* Results Count */}
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="body2" color="text.secondary">
+                    Showing {filteredStudies.length} of {allStudies.length} studies
+                  </Typography>
+                </Box>
+
                 {loadingAllStudies ? (
                   <Box sx={{ display: "flex", justifyContent: "center", py: 10 }}>
                     <CircularProgress size={48} />
@@ -478,7 +1016,7 @@ const PatientsPage: React.FC = () => {
                 ) : (
                   <Paper elevation={0} sx={{ border: 1, borderColor: "divider" }}>
                     <List disablePadding>
-                      {allStudies.map((study, idx) => (
+                      {filteredStudies.map((study, idx) => (
                         <React.Fragment key={study.studyInstanceUID}>
                           <ListItemButton
                             onClick={() => handleStudyClick(study.studyInstanceUID)}
@@ -524,9 +1062,30 @@ const PatientsPage: React.FC = () => {
                             </IconButton>
                             <ChevronRight color="action" />
                           </ListItemButton>
-                          {idx < allStudies.length - 1 && <Divider />}
+                          {idx < filteredStudies.length - 1 && <Divider />}
                         </React.Fragment>
                       ))}
+                      {filteredStudies.length === 0 && allStudies.length > 0 && (
+                        <Box sx={{ textAlign: "center", py: 10 }}>
+                          <Search sx={{ fontSize: 80, color: "text.disabled", mb: 2 }} />
+                          <Typography variant="h6" color="text.secondary" gutterBottom>
+                            No studies match your search
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            Try adjusting your filters or search query
+                          </Typography>
+                          <Button
+                            variant="outlined"
+                            onClick={() => {
+                              setSearchQuery("")
+                              setFilterModality("all")
+                            }}
+                            sx={{ mt: 2, textTransform: "none" }}
+                          >
+                            Clear Filters
+                          </Button>
+                        </Box>
+                      )}
                       {allStudies.length === 0 && (
                         <Box sx={{ textAlign: "center", py: 10 }}>
                           <Science sx={{ fontSize: 80, color: "text.disabled", mb: 2 }} />

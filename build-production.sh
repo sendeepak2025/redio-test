@@ -196,7 +196,7 @@ server {
 
     # Backend API
     location /api {
-        proxy_pass https://apiradio.varnaamedicalbillingsolutions.com;
+        proxy_pass http://localhost:8001;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection 'upgrade';
@@ -215,7 +215,7 @@ server {
 
     # Auth endpoints
     location /auth {
-        proxy_pass https://apiradio.varnaamedicalbillingsolutions.com;
+        proxy_pass http://localhost:8001;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
@@ -225,7 +225,7 @@ server {
 
     # Health check
     location /health {
-        proxy_pass https://apiradio.varnaamedicalbillingsolutions.com;
+        proxy_pass http://localhost:8001;
         access_log off;
     }
 

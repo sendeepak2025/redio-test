@@ -119,7 +119,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 **Example cURL:**
 ```bash
 curl -H "Authorization: Bearer YOUR_TOKEN" \
-  https://apiradio.varnaamedicalbillingsolutions.com/api/dicom/studies
+  http://localhost:8001/api/dicom/studies
 ```
 
 ---
@@ -314,7 +314,7 @@ All authentication events are logged via:
 
 ```bash
 # Login and get token
-curl -X POST https://apiradio.varnaamedicalbillingsolutions.com/auth/login \
+curl -X POST http://localhost:8001/auth/login \
   -H "Content-Type: application/json" \
   -d '{"username":"admin","password":"admin123"}'
 ```
@@ -323,11 +323,11 @@ curl -X POST https://apiradio.varnaamedicalbillingsolutions.com/auth/login \
 
 ```bash
 # Without token (should fail)
-curl https://apiradio.varnaamedicalbillingsolutions.com/api/dicom/studies
+curl http://localhost:8001/api/dicom/studies
 
 # With token (should succeed)
 curl -H "Authorization: Bearer YOUR_TOKEN" \
-  https://apiradio.varnaamedicalbillingsolutions.com/api/dicom/studies
+  http://localhost:8001/api/dicom/studies
 ```
 
 ### 3. **Test Token Expiration**
@@ -335,7 +335,7 @@ curl -H "Authorization: Bearer YOUR_TOKEN" \
 ```bash
 # Use expired token (should fail with TOKEN_EXPIRED)
 curl -H "Authorization: Bearer EXPIRED_TOKEN" \
-  https://apiradio.varnaamedicalbillingsolutions.com/api/dicom/studies
+  http://localhost:8001/api/dicom/studies
 ```
 
 ---

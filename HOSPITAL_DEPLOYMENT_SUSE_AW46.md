@@ -757,7 +757,7 @@ systemctl is-active nginx && echo "✓ Running" || echo "✗ Not running"
 
 # Check API
 echo "5. API Health:"
-curl -s https://apiradio.varnaamedicalbillingsolutions.com/api/health | grep -q "healthy" && echo "✓ Healthy" || echo "✗ Unhealthy"
+curl -s http://localhost:8001/api/health | grep -q "healthy" && echo "✓ Healthy" || echo "✗ Unhealthy"
 
 # Check Orthanc API
 echo "6. Orthanc API:"

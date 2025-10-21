@@ -107,7 +107,8 @@ async function fetchAllInstanceIdsFromStudy(studyDetails) {
     return instanceIds;
 }
 
-const DEFAULT_HOSPITAL_ID = '68dfa4bef81ab721545395d4'; // Default hospital ObjectId
+const DEFAULT_HOSPITAL_ID = '68f231e7301ed3979c14c5d4';
+ // Default hospital ObjectId
 
 async function saveStudyToDatabase(orthancStudyId) {
     try {

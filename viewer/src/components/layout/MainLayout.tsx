@@ -26,6 +26,7 @@ import {
   Computer as ComputerIcon,
   Folder as FolderIcon,
   Assessment as AssessmentIcon,
+  Assignment as AssignmentIcon,
   Settings as SettingsIcon,
   Person as PersonIcon,
   ExitToApp as LogoutIcon,
@@ -36,6 +37,7 @@ import {
   MedicalServices as MedicalIcon,
   LocalHospital as HospitalIcon,
   Science as ScienceIcon,
+  AttachMoney as BillingIcon,
 } from '@mui/icons-material'
 import { useAppDispatch } from '../../store/hooks'
 import { logout } from '../../store/slices/authSlice'
@@ -94,8 +96,11 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
       title: 'Main',
       items: [
         { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard' },
+        { text: 'Worklist', icon: <AssignmentIcon />, path: '/worklist' },
         { text: 'Patients', icon: <PeopleIcon />, path: '/patients' },
         { text: 'Studies', icon: <FolderIcon />, path: '/orthanc' },
+        { text: 'Prior Auth', icon: <MedicalIcon />, path: '/prior-auth' },
+        { text: 'Billing', icon: <BillingIcon />, path: '/billing' },
       ]
     },
     {
@@ -267,9 +272,11 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           </IconButton>
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
             {location.pathname === '/dashboard' && 'Dashboard'}
+            {location.pathname === '/worklist' && 'Study Worklist'}
             {location.pathname === '/patients' && 'Patients'}
             {location.pathname === '/system-monitoring' && 'System Monitoring'}
             {location.pathname === '/orthanc' && 'Studies'}
+            {location.pathname === '/billing' && 'Billing & Superbills'}
             {location.pathname.startsWith('/users') && 'User Management'}
             {location.pathname === '/settings' && 'Settings'}
           </Typography>

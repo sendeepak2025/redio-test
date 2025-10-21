@@ -11,14 +11,18 @@ import { getRoleBasedRedirect } from './utils/roleBasedRedirect'
 
 import ViewerPage from './pages/viewer/ViewerPage'
 import PatientsPage from './pages/patients/PatientsPage'
+import WorklistPage from './pages/worklist/WorklistPage'
+import PriorAuthPage from './pages/prior-auth/PriorAuthPage'
 import OrthancViewerPage from './pages/orthanc/OrthancViewerPage'
 import SystemDashboard from './pages/dashboard/SystemDashboard'
+import EnhancedDashboard from './pages/dashboard/EnhancedDashboard'
 import MainLayout from './components/layout/MainLayout'
 import UsersPage from './pages/users/UsersPage'
 import LandingPage from './pages/LandingPage'
 import SuperAdminDashboard from './pages/superadmin/SuperAdminDashboard'
 import SettingsPage from './pages/settings/SettingsPage'
 import ProfilePage from './pages/profile/ProfilePage'
+import BillingPage from './pages/billing/BillingPage'
 
 // Simple pages without complex dependencies
 const LoginPage = React.lazy(() => import('./pages/auth/LoginPage'))
@@ -127,7 +131,7 @@ function App() {
             element={
               <SimpleProtectedRoute>
                 <MainLayout>
-                  <SystemDashboard />
+                  <EnhancedDashboard />
                 </MainLayout>
               </SimpleProtectedRoute>
             }
@@ -139,6 +143,39 @@ function App() {
               <SimpleProtectedRoute>
                 <MainLayout>
                   <PatientsPage />
+                </MainLayout>
+              </SimpleProtectedRoute>
+            }
+          />
+          
+          <Route
+            path="/worklist"
+            element={
+              <SimpleProtectedRoute>
+                <MainLayout>
+                  <WorklistPage />
+                </MainLayout>
+              </SimpleProtectedRoute>
+            }
+          />
+          
+          <Route
+            path="/prior-auth"
+            element={
+              <SimpleProtectedRoute>
+                <MainLayout>
+                  <PriorAuthPage />
+                </MainLayout>
+              </SimpleProtectedRoute>
+            }
+          />
+          
+          <Route
+            path="/billing"
+            element={
+              <SimpleProtectedRoute>
+                <MainLayout>
+                  <BillingPage />
                 </MainLayout>
               </SimpleProtectedRoute>
             }

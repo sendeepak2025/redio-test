@@ -63,7 +63,7 @@ curl -u orthanc:orthanc_secure_2024 \
 
 **Option C: Via API**
 ```bash
-curl -X POST https://apiradio.varnaamedicalbillingsolutions.com/api/dicom/upload \
+curl -X POST http://localhost:8001/api/dicom/upload \
   -H "Authorization: Bearer TOKEN" \
   -F "file=@file.dcm"
 ```
@@ -235,7 +235,7 @@ ORTHANC_PASSWORD=your-password
 | Component | URL/Location |
 |-----------|-------------|
 | Remote Orthanc | http://69.62.70.102:8042 |
-| API Server | https://apiradio.varnaamedicalbillingsolutions.com |
+| API Server | http://localhost:8001 |
 | Web Viewer | http://localhost:5173/viewer |
 | Upload UI | http://localhost:5173/upload |
 | MongoDB | MongoDB Atlas (configured) |

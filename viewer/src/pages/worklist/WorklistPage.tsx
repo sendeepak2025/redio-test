@@ -1,409 +1,386 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   Box,
-  Grid,
   Paper,
   Typography,
-  Pagination,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
+  Tabs,
+  Tab,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Chip,
+  IconButton,
   Button,
-  Drawer,
-  useMediaQuery,
-  useTheme,
-  Fab,
+  TextField,
+  InputAdornment,
   Badge,
-  Snackbar,
-  Alert,
+  Tooltip,
+  Menu,
+  MenuItem,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions
 } from '@mui/material'
 import {
-  Refresh as RefreshIcon,
-  Person as PersonIcon,
+  Search as SearchIcon,
+  Visibility as ViewIcon,
+  Assignment as ReportIcon,
+  CheckCircle as CompleteIcon,
+  Pending as PendingIcon,
   FilterList as FilterIcon,
+  Refresh as RefreshIcon,
+  MoreVert as MoreIcon,
+  CalendarToday as CalendarIcon
 } from '@mui/icons-material'
-import { Helmet } from 'react-helmet-async'
 import { useNavigate } from 'react-router-dom'
+import ApiService from '../../services/ApiService'
 
-import WorklistTable from '@/components/worklist/WorklistTable'
-import { WorklistFilters as WorklistFiltersComponent } from '@/components/worklist/WorklistFilters'
-import PatientContextPanel from '@/components/worklist/PatientContextPanel'
-import { useStudyCache } from '@/hooks/useStudyCache'
-import type { Study, WorklistFilters, SortOptions } from '@/types/worklist'
+interface Study {
+  studyInstanceUID: string
+  patientID: string
+  patientName: string
+  studyDate: string
+  studyTime: string
+  modality: string
+  studyDescription: string
+  status: 'pending' | 'completed'
+  reportStatus?: 'draft' | 'finalized' | 'none'
+  priority?: 'routine' | 'urgent' | 'stat'
+  assignedTo?: string
+}
 
 const WorklistPage: React.FC = () => {
-  const theme = useTheme()
   const navigate = useNavigate()
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'))
-  
-  // State
+  const [activeTab, setActiveTab] = useState(0)
+  const [studies, setStudies] = useState<Study[]>([])
+  const [filteredStudies, setFilteredStudies] = useState<Study[]>([])
+  const [searchQuery, setSearchQuery] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
   const [selectedStudy, setSelectedStudy] = useState<Study | null>(null)
-  const [filters, setFilters] = useState<Partial<WorklistFilters>>({})
-  const [sortOptions, setSortOptions] = useState<SortOptions>({
-    field: 'studyDate',
-    direction: 'desc',
-  })
-  const [searchTerm, setSearchTerm] = useState('')
-  const [page, setPage] = useState(1)
-  const [pageSize, setPageSize] = useState(20)
-  const [patientPanelOpen, setPatientPanelOpen] = useState(!isMobile)
-  const [filterDrawerOpen, setFilterDrawerOpen] = useState(false)
-  const [snackbar, setSnackbar] = useState<{
-    open: boolean
-    message: string
-    severity: 'success' | 'error' | 'info' | 'warning'
-  }>({
-    open: false,
-    message: '',
-    severity: 'info',
-  })
 
-  // Study cache hook
-  const {
-    studies,
-    total,
-    loading,
-    error,
-    loadWorklist,
-    refreshWorklist,
-    updateStudy,
-    getCacheStats,
-  } = useStudyCache({
-    cacheTimeout: 5 * 60 * 1000, // 5 minutes
-    maxCacheSize: 200,
-    prefetchRelated: true,
-  })
-
-  // Load initial worklist
   useEffect(() => {
-    loadWorklist({
-      page,
-      pageSize,
-      filters,
-      sort: sortOptions,
-      search: searchTerm,
-    })
-  }, [page, pageSize, filters, sortOptions, searchTerm, loadWorklist])
+    fetchStudies()
+  }, [])
 
-  // Handle study selection
-  const handleStudySelect = useCallback((study: Study) => {
-    setSelectedStudy(study)
-    if (isMobile) {
-      setPatientPanelOpen(true)
-    }
-    
-    // Navigate to viewer if double-clicked (simulated by checking if already selected)
-    if (selectedStudy?.studyInstanceUID === study.studyInstanceUID) {
-      navigate(`/viewer/${study.studyInstanceUID}`)
-    }
-  }, [selectedStudy, isMobile, navigate])
+  useEffect(() => {
+    filterStudies()
+  }, [activeTab, searchQuery, studies])
 
-  // Handle study assignment
-  const handleStudyAssign = useCallback(async (study: Study) => {
+  const fetchStudies = async () => {
+    setLoading(true)
     try {
-      // This would typically open an assignment dialog
-      // For now, we'll simulate assigning to current user
-      const updatedStudy = await import('@/services/worklistService').then(
-        ({ worklistService }) => worklistService.assignStudy(study.studyInstanceUID, 'current-user')
+      const response = await ApiService.getStudies()
+      if (response.success && response.data) {
+        // Add mock status for demo
+        const studiesWithStatus = response.data.map((study: any) => ({
+          ...study,
+          status: Math.random() > 0.5 ? 'pending' : 'completed',
+          reportStatus: Math.random() > 0.7 ? 'finalized' : Math.random() > 0.4 ? 'draft' : 'none',
+          priority: Math.random() > 0.8 ? 'stat' : Math.random() > 0.5 ? 'urgent' : 'routine'
+        }))
+        setStudies(studiesWithStatus)
+      }
+    } catch (error) {
+      console.error('Failed to fetch studies:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const filterStudies = () => {
+    let filtered = studies
+
+    // Filter by tab (pending/completed)
+    if (activeTab === 0) {
+      filtered = filtered.filter(s => s.status === 'pending')
+    } else {
+      filtered = filtered.filter(s => s.status === 'completed')
+    }
+
+    // Filter by search query
+    if (searchQuery) {
+      filtered = filtered.filter(s =>
+        s.patientName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        s.patientID?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        s.studyDescription?.toLowerCase().includes(searchQuery.toLowerCase())
       )
-      
-      updateStudy(study.studyInstanceUID, updatedStudy)
-      
-      setSnackbar({
-        open: true,
-        message: `Study assigned successfully`,
-        severity: 'success',
-      })
-    } catch (err) {
-      setSnackbar({
-        open: true,
-        message: 'Failed to assign study',
-        severity: 'error',
-      })
     }
-  }, [updateStudy])
 
-  // Handle priority change
-  const handlePriorityChange = useCallback(async (study: Study, priority: Study['priority']) => {
-    try {
-      const updatedStudy = await import('@/services/worklistService').then(
-        ({ worklistService }) => worklistService.updateStudyPriority(study.studyInstanceUID, priority)
-      )
-      
-      updateStudy(study.studyInstanceUID, updatedStudy)
-      
-      setSnackbar({
-        open: true,
-        message: `Priority updated to ${priority}`,
-        severity: 'success',
-      })
-    } catch (err) {
-      setSnackbar({
-        open: true,
-        message: 'Failed to update priority',
-        severity: 'error',
-      })
+    setFilteredStudies(filtered)
+  }
+
+  const handleViewStudy = (study: Study) => {
+    navigate(`/viewer/${study.studyInstanceUID}`)
+  }
+
+  const handleMarkComplete = async (study: Study) => {
+    // Update study status
+    const updated = studies.map(s =>
+      s.studyInstanceUID === study.studyInstanceUID
+        ? { ...s, status: 'completed' as const }
+        : s
+    )
+    setStudies(updated)
+  }
+
+  const handleMarkPending = async (study: Study) => {
+    // Update study status
+    const updated = studies.map(s =>
+      s.studyInstanceUID === study.studyInstanceUID
+        ? { ...s, status: 'pending' as const }
+        : s
+    )
+    setStudies(updated)
+  }
+
+  const getPriorityColor = (priority?: string) => {
+    switch (priority) {
+      case 'stat': return 'error'
+      case 'urgent': return 'warning'
+      default: return 'default'
     }
-  }, [updateStudy])
+  }
 
-  // Handle filters change
-  const handleFiltersChange = useCallback((newFilters: Partial<WorklistFilters>) => {
-    setFilters(newFilters)
-    setPage(1) // Reset to first page when filters change
-  }, [])
-
-  // Handle search
-  const handleSearch = useCallback((term: string) => {
-    setSearchTerm(term)
-    setPage(1) // Reset to first page when searching
-  }, [])
-
-  // Handle sort change
-  const handleSortChange = useCallback((sort: SortOptions) => {
-    setSortOptions(sort)
-    setPage(1) // Reset to first page when sorting changes
-  }, [])
-
-  // Handle page change
-  const handlePageChange = useCallback((_: React.ChangeEvent<unknown>, newPage: number) => {
-    setPage(newPage)
-  }, [])
-
-  // Handle page size change
-  const handlePageSizeChange = useCallback((event: any) => {
-    setPageSize(event.target.value)
-    setPage(1) // Reset to first page when page size changes
-  }, [])
-
-  // Handle refresh
-  const handleRefresh = useCallback(async () => {
-    await refreshWorklist()
-    setSnackbar({
-      open: true,
-      message: 'Worklist refreshed',
-      severity: 'success',
-    })
-  }, [refreshWorklist])
-
-  // Calculate total pages
-  const totalPages = Math.ceil(total / pageSize)
-
-  // Get active filter count
-  const activeFilterCount = Object.values(filters).filter(value => {
-    if (Array.isArray(value)) return value.length > 0
-    if (typeof value === 'object' && value !== null) {
-      return Object.values(value).some(v => v !== null && v !== '')
+  const getReportStatusColor = (status?: string) => {
+    switch (status) {
+      case 'finalized': return 'success'
+      case 'draft': return 'info'
+      default: return 'default'
     }
-    return value !== null && value !== undefined && value !== ''
-  }).length
+  }
+
+  const pendingCount = studies.filter(s => s.status === 'pending').length
+  const completedCount = studies.filter(s => s.status === 'completed').length
 
   return (
-    <>
-      <Helmet>
-        <title>Worklist - Medical Imaging Viewer</title>
-      </Helmet>
-      
-      <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
-        {/* Header */}
-        <Paper elevation={1} sx={{ p: 2, borderRadius: 0 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Box>
-              <Typography variant="h5" gutterBottom>
-                Worklist
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                {total} studies • Page {page} of {totalPages}
-              </Typography>
-            </Box>
-            
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              {!isMobile && (
-                <Button
-                  startIcon={<FilterIcon />}
-                  onClick={() => setFilterDrawerOpen(true)}
-                  variant={activeFilterCount > 0 ? 'contained' : 'outlined'}
-                >
-                  Filters {activeFilterCount > 0 && `(${activeFilterCount})`}
-                </Button>
-              )}
-              
-              <Button
-                startIcon={<RefreshIcon />}
-                onClick={handleRefresh}
-                disabled={loading}
-              >
-                Refresh
-              </Button>
-              
-              {!isMobile && (
-                <Button
-                  startIcon={<PersonIcon />}
-                  onClick={() => setPatientPanelOpen(!patientPanelOpen)}
-                  variant={patientPanelOpen ? 'contained' : 'outlined'}
-                >
-                  Patient Context
-                </Button>
-              )}
-            </Box>
+    <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column', bgcolor: '#f5f5f5' }}>
+      {/* Header */}
+      <Paper sx={{ p: 3, borderRadius: 0 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+          <Typography variant="h4" fontWeight="bold">
+            📋 Study Worklist
+          </Typography>
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            <Button
+              startIcon={<RefreshIcon />}
+              onClick={fetchStudies}
+              disabled={loading}
+            >
+              Refresh
+            </Button>
+            <Button
+              startIcon={<FilterIcon />}
+              variant="outlined"
+            >
+              Filters
+            </Button>
           </Box>
-        </Paper>
-
-        {/* Main Content */}
-        <Box sx={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
-          {/* Worklist */}
-          <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-            {/* Filters (Desktop) */}
-            {!isMobile && (
-              <WorklistFiltersComponent
-                filters={filters}
-                onFiltersChange={handleFiltersChange}
-                onSearch={handleSearch}
-                searchTerm={searchTerm}
-                loading={loading}
-              />
-            )}
-            
-            {/* Table */}
-            <Box sx={{ flex: 1, overflow: 'auto', p: 2 }}>
-              <WorklistTable
-                studies={studies}
-                loading={loading}
-                sortOptions={sortOptions}
-                onSortChange={handleSortChange}
-                onStudySelect={handleStudySelect}
-                onStudyAssign={handleStudyAssign}
-                onPriorityChange={handlePriorityChange}
-                selectedStudyId={selectedStudy?.studyInstanceUID}
-              />
-            </Box>
-            
-            {/* Pagination */}
-            <Paper elevation={1} sx={{ p: 2, borderRadius: 0 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <FormControl size="small" sx={{ minWidth: 120 }}>
-                  <InputLabel>Per Page</InputLabel>
-                  <Select
-                    value={pageSize}
-                    onChange={handlePageSizeChange}
-                    label="Per Page"
-                  >
-                    <MenuItem value={10}>10</MenuItem>
-                    <MenuItem value={20}>20</MenuItem>
-                    <MenuItem value={50}>50</MenuItem>
-                    <MenuItem value={100}>100</MenuItem>
-                  </Select>
-                </FormControl>
-                
-                <Pagination
-                  count={totalPages}
-                  page={page}
-                  onChange={handlePageChange}
-                  color="primary"
-                  showFirstButton
-                  showLastButton
-                  disabled={loading}
-                />
-              </Box>
-            </Paper>
-          </Box>
-
-          {/* Patient Context Panel (Desktop) */}
-          {!isMobile && patientPanelOpen && (
-            <Box sx={{ width: 400, borderLeft: 1, borderColor: 'divider' }}>
-              <PatientContextPanel
-                study={selectedStudy}
-                onClose={() => setPatientPanelOpen(false)}
-              />
-            </Box>
-          )}
         </Box>
 
-        {/* Mobile FABs */}
-        {isMobile && (
-          <>
-            <Fab
-              color="primary"
-              sx={{ position: 'fixed', bottom: 80, right: 16 }}
-              onClick={() => setFilterDrawerOpen(true)}
-            >
-              <Badge badgeContent={activeFilterCount} color="error">
-                <FilterIcon />
+        {/* Search */}
+        <TextField
+          fullWidth
+          placeholder="Search by patient name, ID, or study description..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon />
+              </InputAdornment>
+            )
+          }}
+        />
+      </Paper>
+
+      {/* Tabs */}
+      <Paper sx={{ borderRadius: 0 }}>
+        <Tabs value={activeTab} onChange={(_, v) => setActiveTab(v)}>
+          <Tab
+            label={
+              <Badge badgeContent={pendingCount} color="warning">
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <PendingIcon />
+                  Pending Studies
+                </Box>
               </Badge>
-            </Fab>
-            
-            {selectedStudy && (
-              <Fab
-                color="secondary"
-                sx={{ position: 'fixed', bottom: 16, right: 16 }}
-                onClick={() => setPatientPanelOpen(true)}
-              >
-                <PersonIcon />
-              </Fab>
-            )}
-          </>
-        )}
-
-        {/* Filter Drawer (Mobile) */}
-        <Drawer
-          anchor="bottom"
-          open={filterDrawerOpen}
-          onClose={() => setFilterDrawerOpen(false)}
-          PaperProps={{
-            sx: { maxHeight: '80vh' },
-          }}
-        >
-          <Box sx={{ p: 2 }}>
-            <WorklistFiltersComponent
-              filters={filters}
-              onFiltersChange={handleFiltersChange}
-              onSearch={handleSearch}
-              searchTerm={searchTerm}
-              loading={loading}
-            />
-          </Box>
-        </Drawer>
-
-        {/* Patient Context Drawer (Mobile) */}
-        <Drawer
-          anchor="right"
-          open={patientPanelOpen && isMobile}
-          onClose={() => setPatientPanelOpen(false)}
-          PaperProps={{
-            sx: { width: '100%', maxWidth: 400 },
-          }}
-        >
-          <PatientContextPanel
-            study={selectedStudy}
-            onClose={() => setPatientPanelOpen(false)}
+            }
           />
-        </Drawer>
+          <Tab
+            label={
+              <Badge badgeContent={completedCount} color="success">
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <CompleteIcon />
+                  Completed Studies
+                </Box>
+              </Badge>
+            }
+          />
+        </Tabs>
+      </Paper>
 
-        {/* Snackbar */}
-        <Snackbar
-          open={snackbar.open}
-          autoHideDuration={6000}
-          onClose={() => setSnackbar({ ...snackbar, open: false })}
-        >
-          <Alert
-            onClose={() => setSnackbar({ ...snackbar, open: false })}
-            severity={snackbar.severity}
-            sx={{ width: '100%' }}
-          >
-            {snackbar.message}
-          </Alert>
-        </Snackbar>
-
-        {/* Error Display */}
-        {error && (
-          <Snackbar open={!!error} autoHideDuration={6000}>
-            <Alert severity="error" sx={{ width: '100%' }}>
-              {error}
-            </Alert>
-          </Snackbar>
-        )}
+      {/* Table */}
+      <Box sx={{ flex: 1, overflow: 'auto', p: 3 }}>
+        <TableContainer component={Paper}>
+          <Table>
+            <TableHead>
+              <TableRow sx={{ bgcolor: 'grey.100' }}>
+                <TableCell>Priority</TableCell>
+                <TableCell>Patient Name</TableCell>
+                <TableCell>Patient ID</TableCell>
+                <TableCell>Study Date</TableCell>
+                <TableCell>Modality</TableCell>
+                <TableCell>Description</TableCell>
+                <TableCell>Report Status</TableCell>
+                <TableCell align="right">Actions</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {filteredStudies.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={8} align="center" sx={{ py: 8 }}>
+                    <Typography variant="h6" color="text.secondary">
+                      {loading ? 'Loading studies...' : 'No studies found'}
+                    </Typography>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredStudies.map((study) => (
+                  <TableRow
+                    key={study.studyInstanceUID}
+                    hover
+                    sx={{ '&:hover': { bgcolor: 'action.hover' } }}
+                  >
+                    <TableCell>
+                      <Chip
+                        label={study.priority?.toUpperCase()}
+                        size="small"
+                        color={getPriorityColor(study.priority)}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Typography fontWeight="medium">
+                        {study.patientName || 'Unknown'}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>{study.patientID}</TableCell>
+                    <TableCell>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <CalendarIcon fontSize="small" color="action" />
+                        {study.studyDate}
+                      </Box>
+                    </TableCell>
+                    <TableCell>
+                      <Chip label={study.modality} size="small" variant="outlined" />
+                    </TableCell>
+                    <TableCell>{study.studyDescription}</TableCell>
+                    <TableCell>
+                      <Chip
+                        label={study.reportStatus === 'finalized' ? 'Finalized' : study.reportStatus === 'draft' ? 'Draft' : 'No Report'}
+                        size="small"
+                        color={getReportStatusColor(study.reportStatus)}
+                      />
+                    </TableCell>
+                    <TableCell align="right">
+                      <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
+                        <Tooltip title="View Study">
+                          <IconButton
+                            size="small"
+                            color="primary"
+                            onClick={() => handleViewStudy(study)}
+                          >
+                            <ViewIcon />
+                          </IconButton>
+                        </Tooltip>
+                        {study.status === 'pending' ? (
+                          <Tooltip title="Mark as Complete">
+                            <IconButton
+                              size="small"
+                              color="success"
+                              onClick={() => handleMarkComplete(study)}
+                            >
+                              <CompleteIcon />
+                            </IconButton>
+                          </Tooltip>
+                        ) : (
+                          <Tooltip title="Mark as Pending">
+                            <IconButton
+                              size="small"
+                              color="warning"
+                              onClick={() => handleMarkPending(study)}
+                            >
+                              <PendingIcon />
+                            </IconButton>
+                          </Tooltip>
+                        )}
+                        <Tooltip title="More Options">
+                          <IconButton
+                            size="small"
+                            onClick={(e) => {
+                              setAnchorEl(e.currentTarget)
+                              setSelectedStudy(study)
+                            }}
+                          >
+                            <MoreIcon />
+                          </IconButton>
+                        </Tooltip>
+                      </Box>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
       </Box>
-    </>
+
+      {/* Context Menu */}
+      <Menu
+        anchorEl={anchorEl}
+        open={Boolean(anchorEl)}
+        onClose={() => setAnchorEl(null)}
+      >
+        <MenuItem onClick={() => {
+          if (selectedStudy) handleViewStudy(selectedStudy)
+          setAnchorEl(null)
+        }}>
+          <ViewIcon fontSize="small" sx={{ mr: 1 }} />
+          Open in Viewer
+        </MenuItem>
+        <MenuItem onClick={() => {
+          if (selectedStudy) navigate(`/viewer/${selectedStudy.studyInstanceUID}?tab=3`)
+          setAnchorEl(null)
+        }}>
+          <ReportIcon fontSize="small" sx={{ mr: 1 }} />
+          Create Report
+        </MenuItem>
+        <MenuItem onClick={() => {
+          if (selectedStudy) {
+            selectedStudy.status === 'pending'
+              ? handleMarkComplete(selectedStudy)
+              : handleMarkPending(selectedStudy)
+          }
+          setAnchorEl(null)
+        }}>
+          {selectedStudy?.status === 'pending' ? (
+            <>
+              <CompleteIcon fontSize="small" sx={{ mr: 1 }} />
+              Mark Complete
+            </>
+          ) : (
+            <>
+              <PendingIcon fontSize="small" sx={{ mr: 1 }} />
+              Mark Pending
+            </>
+          )}
+        </MenuItem>
+      </Menu>
+    </Box>
   )
 }
 

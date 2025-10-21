@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import axios from 'axios'
 import SignaturePad from './SignaturePad'
+import BillingPanel from '../billing/BillingPanel'
 import {
   Box,
   Paper,
@@ -100,7 +101,7 @@ interface ReportTemplate {
 // ---- AXIOS CLIENT (adds token to every request) ----
 const backendUrl =
   (import.meta.env as any)?.VITE_BACKEND_URL 
-  'https://apiradio.varnaamedicalbillingsolutions.com'
+  'http://localhost:8001'
 
 const axiosClient = axios.create({
   baseURL: backendUrl,
@@ -365,7 +366,7 @@ const token = getAuthToken()
         let templatesToUse = standardTemplates
         
         try {
-          const backendUrl = import.meta.env.VITE_BACKEND_URL || process.env.REACT_APP_BACKEND_URL || 'https://apiradio.varnaamedicalbillingsolutions.com'
+          const backendUrl = import.meta.env.VITE_BACKEND_URL || process.env.REACT_APP_BACKEND_URL || 'http://localhost:8001'
           const response = await axiosClient.get(`${backendUrl}/api/reports/templates?active=true`)
           
           if (response.data?.success && response.data.templates?.length > 0) {
@@ -414,7 +415,7 @@ const token = getAuthToken()
       if (!studyData?.studyInstanceUID) return
       
       try {
-        const backendUrl = import.meta.env.VITE_BACKEND_URL || process.env.REACT_APP_BACKEND_URL || 'https://apiradio.varnaamedicalbillingsolutions.com'
+        const backendUrl = import.meta.env.VITE_BACKEND_URL || process.env.REACT_APP_BACKEND_URL || 'http://localhost:8001'
         const response = await axiosClient.get(`${backendUrl}/api/reports/study/${studyData.studyInstanceUID}`)
         
         if (response.data.success) {
@@ -483,7 +484,7 @@ const token = getAuthToken()
         author: 'Current User'
       }
 
-      const backendUrl = import.meta.env.VITE_BACKEND_URL || process.env.REACT_APP_BACKEND_URL || 'https://apiradio.varnaamedicalbillingsolutions.com'
+      const backendUrl = import.meta.env.VITE_BACKEND_URL || process.env.REACT_APP_BACKEND_URL || 'http://localhost:8001'
       await axiosClient.post(`${backendUrl}/api/reports`, reportData)
       
       setSaveStatus('saved')
@@ -544,7 +545,7 @@ const token = getAuthToken()
     try {
       // Try backend AI generation first
       try {
-        const backendUrl = import.meta.env.VITE_BACKEND_URL || process.env.REACT_APP_BACKEND_URL || 'https://apiradio.varnaamedicalbillingsolutions.com'
+        const backendUrl = import.meta.env.VITE_BACKEND_URL || process.env.REACT_APP_BACKEND_URL || 'http://localhost:8001'
         
         const requestData = {
           templateId: selectedTemplate.id,
@@ -855,74 +856,109 @@ const token = getAuthToken()
         </Alert>
       </Snackbar>
 
-      {/* Advanced Header */}
+      {/* Modern Header with Better Colors */}
       <Box sx={{ 
-        p: 2, 
-        borderBottom: '1px solid #333', 
+        p: 3, 
+        borderBottom: '2px solid #2196f3', 
         display: 'flex', 
         justifyContent: 'space-between', 
         alignItems: 'center',
-        background: 'linear-gradient(90deg, #1a1a1a 0%, #2a2a3a 100%)'
+        background: 'linear-gradient(135deg, #1e3c72 0%, #2a5298 100%)',
+        boxShadow: '0 4px 6px rgba(0,0,0,0.3)'
       }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <ReportIcon sx={{ color: '#64b5f6', fontSize: 28 }} />
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+          <Box sx={{ 
+            bgcolor: 'rgba(255,255,255,0.1)', 
+            p: 1.5, 
+            borderRadius: 2,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
+            <ReportIcon sx={{ color: '#64b5f6', fontSize: 32 }} />
+          </Box>
           <Box>
-            <Typography variant="h5" sx={{ color: '#64b5f6', fontWeight: 'bold' }}>
+            <Typography variant="h5" sx={{ 
+              color: '#fff', 
+              fontWeight: 700,
+              letterSpacing: '0.5px',
+              textShadow: '0 2px 4px rgba(0,0,0,0.2)'
+            }}>
               Advanced Structured Reporting
             </Typography>
-            <Typography variant="body2" sx={{ color: '#ccc' }}>
-              AI-Powered Medical Report Generation
+            <Typography variant="body2" sx={{ 
+              color: '#b3d9ff',
+              fontWeight: 500,
+              mt: 0.5
+            }}>
+              🤖 AI-Powered Medical Report Generation
             </Typography>
           </Box>
           
-          <Box sx={{ display: 'flex', gap: 1 }}>
+          <Box sx={{ display: 'flex', gap: 1, ml: 2 }}>
             <Chip 
               label={reportStatus.toUpperCase()} 
-              color={reportStatus === 'final' ? 'success' : reportStatus === 'reviewing' ? 'warning' : 'default'}
+              color={reportStatus === 'final' ? 'success' : reportStatus === 'reviewing' ? 'warning' : 'info'}
               size="small"
+              sx={{ 
+                fontWeight: 600,
+                boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+              }}
             />
             
             {saveStatus && (
               <Chip 
-                icon={saveStatus === 'saving' ? <CircularProgress size={16} /> : 
+                icon={saveStatus === 'saving' ? <CircularProgress size={16} sx={{ color: '#fff' }} /> : 
                       saveStatus === 'saved' ? <CheckIcon /> : <ErrorIcon />}
                 label={saveStatus === 'saving' ? 'Saving...' : 
-                       saveStatus === 'saved' ? 'Auto-saved' : 'Save failed'}
+                       saveStatus === 'saved' ? 'Saved' : 'Error'}
                 size="small"
                 color={saveStatus === 'saved' ? 'success' : saveStatus === 'error' ? 'error' : 'default'}
+                sx={{ fontWeight: 600 }}
               />
             )}
 
             {reportHistory.length > 0 && (
-              <Badge badgeContent={reportHistory.length} color="primary">
+              <Badge badgeContent={reportHistory.length} color="error">
                 <Chip 
                   icon={<HistoryIcon />}
                   label="History" 
                   size="small"
                   onClick={() => setShowHistory(true)}
-                  sx={{ cursor: 'pointer' }}
+                  sx={{ 
+                    cursor: 'pointer',
+                    bgcolor: 'rgba(255,255,255,0.15)',
+                    color: '#fff',
+                    '&:hover': { bgcolor: 'rgba(255,255,255,0.25)' }
+                  }}
                 />
               </Badge>
             )}
           </Box>
         </Box>
         
-        <Box sx={{ display: 'flex', gap: 1 }}>
+        <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
           <FormControlLabel
             control={
               <Switch 
                 checked={isAIAssistEnabled}
                 onChange={(e) => setIsAIAssistEnabled(e.target.checked)}
-                color="primary"
+                sx={{
+                  '& .MuiSwitch-switchBase.Mui-checked': {
+                    color: '#4caf50',
+                  },
+                  '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
+                    backgroundColor: '#4caf50',
+                  },
+                }}
               />
             }
             label={
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                <AIIcon sx={{ fontSize: 18 }} />
-                AI Assist
+                <AIIcon sx={{ fontSize: 18, color: '#64b5f6' }} />
+                <Typography sx={{ color: '#fff', fontWeight: 500 }}>AI Assist</Typography>
               </Box>
             }
-            sx={{ color: '#ccc' }}
           />
           
           <Button
@@ -931,37 +967,78 @@ const token = getAuthToken()
             onClick={generateAIReport}
             disabled={isGeneratingReport}
             sx={{ 
-              background: 'linear-gradient(45deg, #9c27b0, #e91e63)',
-              '&:hover': { background: 'linear-gradient(45deg, #7b1fa2, #c2185b)' }
+              background: 'linear-gradient(45deg, #e91e63 30%, #9c27b0 90%)',
+              boxShadow: '0 3px 5px 2px rgba(233, 30, 99, .3)',
+              color: '#fff',
+              fontWeight: 600,
+              px: 3,
+              '&:hover': { 
+                background: 'linear-gradient(45deg, #c2185b 30%, #7b1fa2 90%)',
+                boxShadow: '0 4px 6px 2px rgba(233, 30, 99, .4)',
+              },
+              '&:disabled': {
+                background: '#555',
+                color: '#999'
+              }
             }}
           >
-            {isGeneratingReport ? 'Generating...' : 'AI Generate'}
+            {isGeneratingReport ? 'Generating...' : '✨ AI Generate'}
           </Button>
           
           <Button
-            variant="outlined"
+            variant="contained"
             startIcon={<SaveIcon />}
             onClick={handleSaveReport}
-            sx={{ borderColor: '#4caf50', color: '#4caf50' }}
+            sx={{ 
+              bgcolor: '#4caf50',
+              color: '#fff',
+              fontWeight: 600,
+              px: 3,
+              boxShadow: '0 3px 5px 2px rgba(76, 175, 80, .3)',
+              '&:hover': { 
+                bgcolor: '#45a049',
+                boxShadow: '0 4px 6px 2px rgba(76, 175, 80, .4)',
+              }
+            }}
           >
-            Save
+            💾 Save
           </Button>
         </Box>
       </Box>
 
-      {/* Main Content */}
-      <Box sx={{ display: 'flex', height: 'calc(100% - 80px)' }}>
+      {/* Main Content with Better Layout */}
+      <Box sx={{ display: 'flex', height: 'calc(100% - 100px)', bgcolor: '#f5f5f5' }}>
         {/* Left Panel - Report Editor */}
-        <Box sx={{ width: '60%', borderRight: '1px solid #333' }}>
+        <Box sx={{ width: '60%', borderRight: '2px solid #e0e0e0', bgcolor: '#fff' }}>
           <Tabs 
             value={currentTab} 
             onChange={(e, newValue) => setCurrentTab(newValue)}
-            sx={{ borderBottom: '1px solid #333' }}
+            sx={{ 
+              borderBottom: '2px solid #e0e0e0',
+              bgcolor: '#fafafa',
+              '& .MuiTab-root': {
+                color: '#666',
+                fontWeight: 600,
+                fontSize: '0.95rem',
+                minHeight: 56,
+                '&.Mui-selected': {
+                  color: '#2196f3',
+                },
+                '&:hover': {
+                  bgcolor: 'rgba(33, 150, 243, 0.08)',
+                }
+              },
+              '& .MuiTabs-indicator': {
+                height: 3,
+                bgcolor: '#2196f3',
+              }
+            }}
           >
-            <Tab label="Template" />
-            <Tab label="Sections" />
-            <Tab label="Findings" />
-            <Tab label="Review" />
+            <Tab label="📋 Template" />
+            <Tab label="📝 Sections" />
+            <Tab label="🔍 Findings" />
+            <Tab label="✅ Review" />
+            <Tab label="💰 Billing" />
           </Tabs>
 
           <Box sx={{ p: 2, height: 'calc(100% - 48px)', overflow: 'auto' }}>
@@ -1289,62 +1366,148 @@ const token = getAuthToken()
                 </Box>
               </Box>
             )}
+
+            {/* Billing Tab - NEW */}
+            {currentTab === 4 && (
+              <Box sx={{ height: '100%', overflow: 'hidden' }}>
+                <BillingPanel 
+                  studyData={studyData}
+                  reportData={{
+                    sections: reportSections,
+                    findings: findings,
+                    measurements: measurements
+                  }}
+                  onSuperbillCreated={(superbill) => {
+                    console.log('Superbill created:', superbill);
+                    // Show success message
+                    alert(`Superbill ${superbill.superbillNumber} created successfully!`);
+                  }}
+                />
+              </Box>
+            )}
           </Box>
         </Box>
 
-        {/* Right Panel - Study Information & Tools */}
-        <Box sx={{ width: '40%', p: 2, overflow: 'auto' }}>
-          <Typography variant="h6" sx={{ mb: 2, color: '#64b5f6' }}>
-            Study Information
+        {/* Right Panel - Study Information & Tools with Better Design */}
+        <Box sx={{ width: '40%', p: 3, overflow: 'auto', bgcolor: '#fafafa' }}>
+          <Typography variant="h6" sx={{ 
+            mb: 2, 
+            color: '#1976d2',
+            fontWeight: 700,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1
+          }}>
+            📊 Study Information
           </Typography>
           
-          <Paper sx={{ p: 2, bgcolor: '#2a2a2a', mb: 2 }}>
-            <Grid container spacing={1}>
+          <Paper sx={{ 
+            p: 2.5, 
+            bgcolor: '#fff', 
+            mb: 3,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+            borderLeft: '4px solid #2196f3'
+          }}>
+            <Grid container spacing={2}>
               <Grid item xs={6}>
-                <Typography variant="body2" sx={{ color: '#ccc' }}>Patient:</Typography>
-                <Typography variant="body1" sx={{ color: '#fff', fontWeight: 'bold' }}>
+                <Typography variant="caption" sx={{ color: '#666', fontWeight: 600, textTransform: 'uppercase', fontSize: '0.7rem' }}>
+                  Patient
+                </Typography>
+                <Typography variant="body1" sx={{ color: '#1976d2', fontWeight: 700, mt: 0.5 }}>
                   {studyData?.patientName || 'N/A'}
                 </Typography>
               </Grid>
               <Grid item xs={6}>
-                <Typography variant="body2" sx={{ color: '#ccc' }}>Study Date:</Typography>
-                <Typography variant="body1" sx={{ color: '#fff' }}>
+                <Typography variant="caption" sx={{ color: '#666', fontWeight: 600, textTransform: 'uppercase', fontSize: '0.7rem' }}>
+                  Study Date
+                </Typography>
+                <Typography variant="body1" sx={{ color: '#333', fontWeight: 600, mt: 0.5 }}>
                   {studyData?.studyDate || 'N/A'}
                 </Typography>
               </Grid>
               <Grid item xs={6}>
-                <Typography variant="body2" sx={{ color: '#ccc' }}>Modality:</Typography>
-                <Typography variant="body1" sx={{ color: '#fff' }}>
-                  {studyData?.modality || 'N/A'}
+                <Typography variant="caption" sx={{ color: '#666', fontWeight: 600, textTransform: 'uppercase', fontSize: '0.7rem' }}>
+                  Modality
                 </Typography>
+                <Chip 
+                  label={studyData?.modality || 'N/A'} 
+                  size="small" 
+                  sx={{ 
+                    mt: 0.5,
+                    bgcolor: '#e3f2fd',
+                    color: '#1976d2',
+                    fontWeight: 700
+                  }} 
+                />
               </Grid>
               <Grid item xs={6}>
-                <Typography variant="body2" sx={{ color: '#ccc' }}>Series:</Typography>
-                <Typography variant="body1" sx={{ color: '#fff' }}>
-                  {studyData?.numberOfInstances || 'N/A'} images
+                <Typography variant="caption" sx={{ color: '#666', fontWeight: 600, textTransform: 'uppercase', fontSize: '0.7rem' }}>
+                  Images
+                </Typography>
+                <Typography variant="body1" sx={{ color: '#333', fontWeight: 600, mt: 0.5 }}>
+                  {studyData?.numberOfInstances || 'N/A'}
                 </Typography>
               </Grid>
             </Grid>
           </Paper>
 
-          <Typography variant="h6" sx={{ mb: 2, color: '#64b5f6' }}>
-            Measurements ({measurements.length})
+          <Typography variant="h6" sx={{ 
+            mb: 2, 
+            color: '#1976d2',
+            fontWeight: 700,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1
+          }}>
+            📏 Measurements 
+            <Chip 
+              label={measurements.length} 
+              size="small" 
+              sx={{ 
+                bgcolor: '#4caf50',
+                color: '#fff',
+                fontWeight: 700
+              }} 
+            />
           </Typography>
           
-          <Paper sx={{ p: 2, bgcolor: '#2a2a2a', mb: 2, maxHeight: '200px', overflow: 'auto' }}>
+          <Paper sx={{ 
+            p: 2, 
+            bgcolor: '#fff', 
+            mb: 3, 
+            maxHeight: '250px', 
+            overflow: 'auto',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+            borderLeft: '4px solid #4caf50'
+          }}>
             {measurements.length === 0 ? (
-              <Typography sx={{ color: '#ccc', fontStyle: 'italic' }}>
-                No measurements available
-              </Typography>
+              <Box sx={{ textAlign: 'center', py: 3 }}>
+                <Typography sx={{ color: '#999', fontStyle: 'italic' }}>
+                  📐 No measurements available
+                </Typography>
+              </Box>
             ) : (
               <List dense>
                 {measurements.map(measurement => (
-                  <ListItem key={measurement.id} sx={{ py: 0.5 }}>
+                  <ListItem 
+                    key={measurement.id} 
+                    sx={{ 
+                      py: 1,
+                      borderBottom: '1px solid #f0f0f0',
+                      '&:last-child': { borderBottom: 'none' }
+                    }}
+                  >
                     <ListItemText
-                      primary={`${measurement.type}: ${measurement.value} ${measurement.unit}`}
-                      secondary={`Frame ${measurement.frameIndex} - ${measurement.location || 'Unspecified'}`}
-                      primaryTypographyProps={{ sx: { color: '#fff', fontSize: '0.9rem' } }}
-                      secondaryTypographyProps={{ sx: { color: '#ccc', fontSize: '0.8rem' } }}
+                      primary={
+                        <Typography sx={{ color: '#333', fontSize: '0.95rem', fontWeight: 600 }}>
+                          {measurement.type}: {measurement.value} {measurement.unit}
+                        </Typography>
+                      }
+                      secondary={
+                        <Typography sx={{ color: '#666', fontSize: '0.85rem' }}>
+                          📍 Frame {measurement.frameIndex} - {measurement.location || 'Unspecified'}
+                        </Typography>
+                      }
                     />
                   </ListItem>
                 ))}

@@ -13,14 +13,14 @@
 **Before (Insecure):**
 ```bash
 # Anyone could access without authentication
-curl https://apiradio.varnaamedicalbillingsolutions.com/api/dicom/studies
+curl http://localhost:8001/api/dicom/studies
 ```
 
 **After (Secure):**
 ```bash
 # Authentication required
 curl -H "Authorization: Bearer YOUR_TOKEN" \
-  https://apiradio.varnaamedicalbillingsolutions.com/api/dicom/studies
+  http://localhost:8001/api/dicom/studies
 ```
 
 ### Affected Endpoints
@@ -82,7 +82,7 @@ npm run dev
 
 # In another terminal, test authentication
 # 1. Login
-curl -X POST https://apiradio.varnaamedicalbillingsolutions.com/auth/login \
+curl -X POST http://localhost:8001/auth/login \
   -H "Content-Type: application/json" \
   -d '{"username":"admin","password":"admin123"}'
 
@@ -91,7 +91,7 @@ TOKEN="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
 
 # 3. Test protected endpoint
 curl -H "Authorization: Bearer $TOKEN" \
-  https://apiradio.varnaamedicalbillingsolutions.com/api/dicom/studies
+  http://localhost:8001/api/dicom/studies
 ```
 
 ### Step 5: Update Frontend/Client Applications
@@ -130,7 +130,7 @@ axios.interceptors.response.use(
 import requests
 
 # Login
-response = requests.post('https://apiradio.varnaamedicalbillingsolutions.com/auth/login', json={
+response = requests.post('http://localhost:8001/auth/login', json={
     'username': 'admin',
     'password': 'admin123'
 })
@@ -138,7 +138,7 @@ token = response.json()['token']
 
 # Use token in subsequent requests
 headers = {'Authorization': f'Bearer {token}'}
-studies = requests.get('https://apiradio.varnaamedicalbillingsolutions.com/api/dicom/studies', headers=headers)
+studies = requests.get('http://localhost:8001/api/dicom/studies', headers=headers)
 ```
 
 ### Step 6: Deploy to Production
@@ -165,20 +165,20 @@ pm2 logs dicom-server
 
 ```bash
 # 1. Check server health
-curl https://apiradio.varnaamedicalbillingsolutions.com/health
+curl http://localhost:8001/health
 
 # 2. Test authentication
-curl -X POST https://apiradio.varnaamedicalbillingsolutions.com/auth/login \
+curl -X POST http://localhost:8001/auth/login \
   -H "Content-Type: application/json" \
   -d '{"username":"admin","password":"admin123"}'
 
 # 3. Verify protected endpoints require auth
-curl https://apiradio.varnaamedicalbillingsolutions.com/api/dicom/studies
+curl http://localhost:8001/api/dicom/studies
 # Should return 401 Unauthorized
 
 # 4. Test with valid token
 curl -H "Authorization: Bearer $TOKEN" \
-  https://apiradio.varnaamedicalbillingsolutions.com/api/dicom/studies
+  http://localhost:8001/api/dicom/studies
 # Should return studies
 ```
 
@@ -234,7 +234,7 @@ cp server/.env.backup server/.env
 pm2 restart dicom-server
 
 # Verify
-curl https://apiradio.varnaamedicalbillingsolutions.com/api/dicom/studies
+curl http://localhost:8001/api/dicom/studies
 # Should work without authentication (old behavior)
 ```
 
