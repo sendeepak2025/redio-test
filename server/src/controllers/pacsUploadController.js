@@ -29,7 +29,9 @@ class PacsUploadController {
           'application/dicom',
           'application/octet-stream',
           'image/dicom',
-          'image/dcm'
+          'image/dcm',
+          'application/x-dcm',
+          'application/x-dicom'
         ];
         
         const allowedExtensions = ['.dcm', '.dicom', '.dic'];
@@ -37,10 +39,13 @@ class PacsUploadController {
           file.originalname.toLowerCase().endsWith(ext)
         );
         
-        if (allowedMimeTypes.includes(file.mimetype) || hasValidExtension) {
+        // Accept if mime type matches OR has valid extension OR no extension (let Orthanc validate)
+        if (allowedMimeTypes.includes(file.mimetype) || hasValidExtension || !file.originalname.includes('.')) {
+          console.log(`✅ Accepting file: ${file.originalname} (${file.mimetype})`);
           cb(null, true);
         } else {
-          cb(new Error('Only DICOM files are allowed'), false);
+          console.log(`❌ Rejecting file: ${file.originalname} (${file.mimetype})`);
+          cb(new Error(`File type not supported: ${file.mimetype}. Please upload DICOM files (.dcm, .dicom, or .dic)`), false);
         }
       }
     });
