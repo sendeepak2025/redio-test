@@ -1,87 +1,31 @@
+/**
+ * AI Analysis Routes
+ * Unified routing for all AI analysis operations
+ */
+
 const express = require('express');
 const router = express.Router();
+const aiAnalysisController = require('../controllers/aiAnalysisController');
 
-/**
- * AI Analysis endpoint for MedSigLIP and MedGemma
- * POST /api/ai/analyze
- */
-router.post('/analyze', async (req, res) => {
-  try {
-    const { image, model, studyInstanceUID, frameIndex, metadata } = req.body;
+// Main analysis endpoint
+router.post('/analyze', aiAnalysisController.analyze);
 
-    console.log(`🤖 AI Analysis requested: Model=${model}, Study=${studyInstanceUID}, Frame=${frameIndex}`);
+// Get analysis status
+router.get('/analysis/:analysisId/status', aiAnalysisController.getStatus);
 
-    // Simulate AI analysis (replace with actual model inference)
-    const findings = await simulateAIAnalysis(model, metadata);
+// Get all analyses for a study
+router.get('/study/:studyUID/analyses', aiAnalysisController.getStudyAnalyses);
 
-    res.json({
-      success: true,
-      model,
-      findings,
-      timestamp: new Date().toISOString()
-    });
+// Cancel ongoing analysis
+router.post('/analysis/:analysisId/cancel', aiAnalysisController.cancelAnalysis);
 
-  } catch (error) {
-    console.error('AI Analysis error:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
-  }
-});
+// Generate consolidated report
+router.post('/report/consolidated', aiAnalysisController.generateConsolidatedReport);
 
-/**
- * Simulate AI analysis results
- * Replace this with actual MedSigLIP/MedGemma model inference
- */
-async function simulateAIAnalysis(model, metadata) {
-  // Simulate processing delay
-  await new Promise(resolve => setTimeout(resolve, 1500));
+// Download report
+router.get('/report/:analysisId/download', aiAnalysisController.downloadReport);
 
-  if (model === 'medsigclip') {
-    // MedSigLIP - Visual analysis
-    return [
-      {
-        label: 'Coronary Artery',
-        confidence: 0.94,
-        severity: 'low',
-        description: 'Normal coronary artery visualization',
-        bbox: { x: 150, y: 120, width: 200, height: 180 }
-      },
-      {
-        label: 'Catheter Position',
-        confidence: 0.89,
-        severity: 'low',
-        description: 'Catheter properly positioned in vessel',
-        bbox: { x: 100, y: 80, width: 150, height: 120 }
-      },
-      {
-        label: 'Contrast Flow',
-        confidence: 0.92,
-        severity: 'low',
-        description: 'Good contrast opacification observed',
-        bbox: { x: 180, y: 140, width: 180, height: 160 }
-      }
-    ];
-  } else {
-    // MedGemma - Language-based analysis
-    return [
-      {
-        label: 'Clinical Interpretation',
-        confidence: 0.91,
-        severity: 'low',
-        description: 'Angiographic study shows patent coronary arteries with normal flow. No significant stenosis detected. Catheter placement is appropriate.',
-        bbox: null
-      },
-      {
-        label: 'Recommendation',
-        confidence: 0.88,
-        severity: 'low',
-        description: 'Continue standard post-procedure monitoring. Consider follow-up imaging in 6-12 months if clinically indicated.',
-        bbox: null
-      }
-    ];
-  }
-}
+// Save analysis results (from frontend direct processing)
+router.post('/save-analysis', aiAnalysisController.saveAnalysis);
 
 module.exports = router;

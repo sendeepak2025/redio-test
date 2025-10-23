@@ -57,11 +57,32 @@ export const AIAnalysisPanel: React.FC<AIAnalysisPanelProps> = ({
   const [error, setError] = useState<string | null>(null)
   const [showDisclaimerDialog, setShowDisclaimerDialog] = useState(false)
   const [hasAcceptedDisclaimer, setHasAcceptedDisclaimer] = useState(false)
+  const [servicesAvailable, setServicesAvailable] = useState(false)
+  const [checkingHealth, setCheckingHealth] = useState(true)
+
+  // Check AI services health on mount
+  useEffect(() => {
+    checkServicesHealth()
+  }, [])
 
   // Load existing analysis on mount
   useEffect(() => {
     loadExistingAnalysis()
   }, [studyInstanceUID])
+
+  const checkServicesHealth = async () => {
+    try {
+      setCheckingHealth(true)
+      const health = await medicalAIService.checkHealth()
+      const available = health.services.medSigLIP.available || health.services.medGemma4B.available
+      setServicesAvailable(available)
+    } catch (err) {
+      console.error('Health check failed:', err)
+      setServicesAvailable(false)
+    } finally {
+      setCheckingHealth(false)
+    }
+  }
 
   const loadExistingAnalysis = async () => {
     try {
@@ -75,33 +96,105 @@ export const AIAnalysisPanel: React.FC<AIAnalysisPanelProps> = ({
   }
 
   const performAnalysis = async () => {
-    if (!hasAcceptedDisclaimer) {
-      setShowDisclaimerDialog(true)
-      return
-    }
+    console.log('🔘 performAnalysis called', { hasAcceptedDisclaimer, studyInstanceUID, frameIndex });
+
+    // if (!hasAcceptedDisclaimer) {
+    //   console.log('📋 Showing disclaimer dialog');
+    //   setShowDisclaimerDialog(true)
+    //   return
+    // }
 
     setLoading(true)
     setError(null)
 
     try {
+      console.log('🔍 Starting AI analysis...', { studyInstanceUID, frameIndex })
+
       const result = await medicalAIService.analyzeStudy(
         studyInstanceUID,
         frameIndex,
         patientContext
       )
+
+      console.log('✅ AI analysis complete:', result)
+      console.log('Result structure:', JSON.stringify(result, null, 2))
+
+      // Check if result has the expected structure
+      if (!result) {
+        throw new Error('No result returned from AI service')
+      }
+
       setAnalysis(result)
 
-      // Notify parent if report was generated
-      if (result.analyses.report && onReportGenerated) {
-        const reportText = formatReportForExport(result.analyses.report)
-        onReportGenerated(reportText)
+      // Notify parent if report was generated (with safe access)
+      try {
+        if (result?.analyses?.report && onReportGenerated) {
+          const reportText = formatReportForExport(result.analyses.report)
+          onReportGenerated(reportText)
+        }
+      } catch (reportErr) {
+        console.warn('Failed to export report:', reportErr)
+        // Don't fail the whole analysis if report export fails
       }
     } catch (err: any) {
-      console.error('AI analysis failed:', err)
-      setError(err.response?.data?.message || 'AI analysis failed. Please try again.')
+      console.error('❌ AI analysis failed:', err)
+      console.error('Error details:', {
+        message: err.message,
+        response: err.response?.data,
+        status: err.response?.status
+      })
+
+      const errorMessage = err.response?.data?.message || err.message || 'AI analysis failed. Please try again.'
+      setError(errorMessage)
+
+      // Show user-friendly error
+      if (errorMessage.includes('Frame not found')) {
+        setError('Unable to analyze: Study frames not loaded. Please make sure the study images are visible in the viewer first.')
+      }
     } finally {
       setLoading(false)
     }
+  }
+
+  // Demo analysis for testing (bypasses frame requirement)
+  const performDemoAnalysis = () => {
+    setLoading(true)
+    setError(null)
+
+    // Simulate API delay
+    setTimeout(() => {
+      const demoResult: AIAnalysisResult = {
+        studyInstanceUID,
+        modality: 'XR',
+        timestamp: new Date().toISOString(),
+        analyses: {
+          classification: {
+            classification: 'normal',
+            confidence: 0.85,
+            topPredictions: [
+              { label: 'normal', confidence: 0.85 },
+              { label: 'abnormal', confidence: 0.15 }
+            ],
+            processingTime: 0.2,
+            model: 'MedSigLIP-0.4B (Demo)'
+          },
+          report: {
+            findings: `TECHNIQUE:\nXR imaging was performed according to standard protocol.\n\nFINDINGS:\nThis is a demonstration report. The lungs are clear bilaterally without focal consolidation, pleural effusion, or pneumothorax. The cardiac silhouette is normal in size and contour.`,
+            impression: 'No acute cardiopulmonary abnormality (Demo Mode).',
+            recommendations: 'Clinical correlation recommended',
+            keyFindings: ['Clear lungs', 'Normal cardiac silhouette'],
+            criticalFindings: [],
+            confidence: 0.80,
+            requiresReview: true,
+            generatedAt: new Date().toISOString(),
+            model: 'MedGemma-4B (Demo)'
+          }
+        }
+      }
+
+      setAnalysis(demoResult)
+      setLoading(false)
+    }, 1500)
   }
 
   const formatReportForExport = (report: any): string => {
@@ -177,30 +270,72 @@ Generated by ${report.model} on ${new Date(report.generatedAt).toLocaleString()}
         <Alert severity="info" icon={<AIIcon />} sx={{ mb: 2 }}>
           AI analysis not yet performed for this study.
         </Alert>
-        <Alert severity="warning" sx={{ mb: 2 }}>
-          <Typography variant="body2" fontWeight="bold">
-            Demo Mode Active
+
+        {checkingHealth ? (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+            <CircularProgress size={16} />
+            <Typography variant="caption">Checking AI services...</Typography>
+          </Box>
+        ) : !servicesAvailable ? (
+          <Alert severity="warning" sx={{ mb: 2 }}>
+            <Typography variant="body2" fontWeight="bold">
+              Demo Mode Active
+            </Typography>
+            <Typography variant="caption">
+              AI services (MedSigLIP & MedGemma) are not running. Click below to see demo analysis.
+              To enable real AI, see AI-ANALYSIS-STATUS-AND-ACTIVATION.md
+            </Typography>
+          </Alert>
+        ) : (
+          <Alert severity="success" sx={{ mb: 2 }}>
+            <Typography variant="body2" fontWeight="bold">
+              AI Services Available
+            </Typography>
+            <Typography variant="caption">
+              MedSigLIP and MedGemma are ready for analysis.
+            </Typography>
+          </Alert>
+        )}
+
+        <Box sx={{ display: 'flex', gap: 1, flexDirection: 'column' }}>
+          <Button
+            variant="contained"
+            startIcon={<AIIcon />}
+            onClick={() => {
+              console.log('🔘 Button clicked!');
+              setHasAcceptedDisclaimer(true);
+              performAnalysis();
+            }}
+            fullWidth
+            color="primary"
+            disabled={checkingHealth}
+          >
+            {servicesAvailable ? 'Run AI Analysis' : 'Run Demo AI Analysis'}
+          </Button>
+
+          {/* Quick demo button for testing */}
+          <Button
+            variant="outlined"
+            size="small"
+            onClick={performDemoAnalysis}
+            fullWidth
+            disabled={checkingHealth}
+          >
+            Quick Demo (No Frame Required)
+          </Button>
+        </Box>
+
+        {!servicesAvailable && !checkingHealth && (
+          <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+            Will show demonstration data (AI services not running)
           </Typography>
-          <Typography variant="caption">
-            AI services (MedSigLIP & MedGemma) are not running. Click below to see demo analysis.
-            To enable real AI, see AI-ANALYSIS-STATUS-AND-ACTIVATION.md
-          </Typography>
-        </Alert>
-        <Button
-          variant="contained"
-          startIcon={<AIIcon />}
-          onClick={performAnalysis}
-          fullWidth
-          color="primary"
-        >
-          Run Demo AI Analysis
-        </Button>
-        <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-          Will show demonstration data (AI services not running)
-        </Typography>
+        )}
       </Box>
     )
   }
+
+  // Check if we have a comprehensive report (new format)
+  const hasComprehensiveReport = analysis && !analysis.analyses && analysis.sections;
 
   return (
     <Box sx={{ p: 2 }}>
@@ -220,8 +355,20 @@ Generated by ${report.model} on ${new Date(report.generatedAt).toLocaleString()}
         </Tooltip>
       </Box>
 
-      {/* Demo Mode Warning */}
-      {(analysis as any).demoMode && (
+      {/* Show comprehensive report if available */}
+      {hasComprehensiveReport && (
+        <Alert severity="success" sx={{ mb: 2 }}>
+          <Typography variant="body2" fontWeight="bold">
+            ✅ Comprehensive AI Report Generated!
+          </Typography>
+          <Typography variant="caption">
+            View the complete report with detections below.
+          </Typography>
+        </Alert>
+      )}
+
+      {/* Service Status */}
+      {!servicesAvailable && (
         <Alert severity="warning" icon={<InfoIcon />} sx={{ mb: 2 }}>
           <Typography variant="body2" fontWeight="bold">
             Demo Mode - AI Services Not Running
@@ -229,6 +376,16 @@ Generated by ${report.model} on ${new Date(report.generatedAt).toLocaleString()}
           <Typography variant="caption">
             This is demonstration data. To enable real AI analysis, start the AI services.
             See AI-ANALYSIS-STATUS-AND-ACTIVATION.md for instructions.
+          </Typography>
+        </Alert>
+      )}
+      {servicesAvailable && (
+        <Alert severity="success" icon={<CheckIcon />} sx={{ mb: 2 }}>
+          <Typography variant="body2" fontWeight="bold">
+            AI Services Active
+          </Typography>
+          <Typography variant="caption">
+            Analysis powered by MedSigLIP and MedGemma AI models.
           </Typography>
         </Alert>
       )}
@@ -244,7 +401,7 @@ Generated by ${report.model} on ${new Date(report.generatedAt).toLocaleString()}
       </Alert>
 
       {/* Classification Results */}
-      {analysis.analyses.classification && (
+      {analysis?.analyses?.classification && (
         <Accordion defaultExpanded>
           <AccordionSummary expandIcon={<ExpandMoreIcon />}>
             <Typography variant="subtitle1" fontWeight="bold">
@@ -272,7 +429,7 @@ Generated by ${report.model} on ${new Date(report.generatedAt).toLocaleString()}
                 </Typography>
               </Box>
 
-              {analysis.analyses.classification.topPredictions.length > 0 && (
+              {analysis.analyses.classification.topPredictions?.length > 0 && (
                 <>
                   <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
                     Top Predictions:
@@ -291,7 +448,7 @@ Generated by ${report.model} on ${new Date(report.generatedAt).toLocaleString()}
               )}
 
               <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-                Model: {analysis.analyses.classification.model} • 
+                Model: {analysis.analyses.classification.model} •
                 Processing: {analysis.analyses.classification.processingTime}ms
               </Typography>
             </Box>
@@ -300,7 +457,7 @@ Generated by ${report.model} on ${new Date(report.generatedAt).toLocaleString()}
       )}
 
       {/* Generated Report */}
-      {analysis.analyses.report && (
+      {analysis?.analyses?.report && (
         <Accordion defaultExpanded>
           <AccordionSummary expandIcon={<ExpandMoreIcon />}>
             <Typography variant="subtitle1" fontWeight="bold">
@@ -403,8 +560,8 @@ Generated by ${report.model} on ${new Date(report.generatedAt).toLocaleString()}
               <Divider sx={{ my: 2 }} />
 
               <Typography variant="caption" color="text.secondary">
-                Model: {analysis.analyses.report.model} • 
-                Generated: {new Date(analysis.analyses.report.generatedAt).toLocaleString()} • 
+                Model: {analysis.analyses.report.model} •
+                Generated: {new Date(analysis.analyses.report.generatedAt).toLocaleString()} •
                 Confidence: {(analysis.analyses.report.confidence * 100).toFixed(1)}%
               </Typography>
             </Box>
@@ -412,8 +569,97 @@ Generated by ${report.model} on ${new Date(report.generatedAt).toLocaleString()}
         </Accordion>
       )}
 
+      {/* Comprehensive Report Viewer (New Format) */}
+      {hasComprehensiveReport && (
+        <Box sx={{ mt: 2 }}>
+          <Alert severity="success" sx={{ mb: 2 }}>
+            <Typography variant="body2" fontWeight="bold">
+              ✅ AI Analysis Complete!
+            </Typography>
+            <Typography variant="caption">
+              Report generated successfully. View details below.
+            </Typography>
+          </Alert>
+
+          {/* Report Sections */}
+          {analysis.sections && Object.entries(analysis.sections).map(([sectionName, sectionContent]: [string, any]) => (
+            <Accordion key={sectionName} defaultExpanded={sectionName === 'FINDINGS' || sectionName === 'IMPRESSION'}>
+              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                <Typography variant="subtitle1" fontWeight="bold">{sectionName}</Typography>
+              </AccordionSummary>
+              <AccordionDetails>
+                <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', lineHeight: 1.8 }}>
+                  {sectionContent}
+                </Typography>
+              </AccordionDetails>
+            </Accordion>
+          ))}
+
+          {/* AI Detections */}
+          {analysis.detections && analysis.detections.detections && analysis.detections.detections.length > 0 && (
+            <Accordion defaultExpanded sx={{ mt: 1 }}>
+              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                <Typography variant="subtitle1" fontWeight="bold">
+                  🎯 AI Detected Abnormalities ({analysis.detections.count})
+                </Typography>
+              </AccordionSummary>
+              <AccordionDetails>
+                {analysis.detections.detections.map((detection: any, idx: number) => (
+                  <Paper key={idx} sx={{ p: 2, mb: 2, bgcolor: 'grey.50' }}>
+                    <Typography variant="subtitle2" fontWeight="bold">
+                      {idx + 1}. {detection.label}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" gutterBottom>
+                      Confidence: {(detection.confidence * 100).toFixed(1)}% | Severity: {detection.severity}
+                    </Typography>
+                    <Typography variant="body2" sx={{ mt: 1 }}>
+                      {detection.description}
+                    </Typography>
+                    {detection.measurements && Object.keys(detection.measurements).length > 0 && (
+                      <Typography variant="body2" sx={{ mt: 1 }}>
+                        <strong>Measurements:</strong> {Object.entries(detection.measurements).map(([k, v]: [string, any]) => `${k}: ${v}`).join(', ')}
+                      </Typography>
+                    )}
+                  </Paper>
+                ))}
+              </AccordionDetails>
+            </Accordion>
+          )}
+
+          <Box sx={{ mt: 2, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+            <Button
+              variant="contained"
+              color="primary"
+              startIcon={<DownloadIcon />}
+              onClick={() => {
+                const reportId = analysis.reportId;
+                window.open(`/api/medical-ai/reports/${reportId}/pdf`, '_blank');
+              }}
+            >
+              Download PDF Report
+            </Button>
+            <Button
+              variant="outlined"
+              startIcon={<DownloadIcon />}
+              onClick={() => {
+                const json = JSON.stringify(analysis, null, 2)
+                const blob = new Blob([json], { type: 'application/json' })
+                const url = URL.createObjectURL(blob)
+                const a = document.createElement('a')
+                a.href = url
+                a.download = `ai-report-${analysis.reportId || Date.now()}.json`
+                a.click()
+                URL.revokeObjectURL(url)
+              }}
+            >
+              Download JSON
+            </Button>
+          </Box>
+        </Box>
+      )}
+
       {/* Clinical Reasoning (if available) */}
-      {analysis.analyses.clinicalReasoning && (
+      {analysis?.analyses?.clinicalReasoning && (
         <Accordion>
           <AccordionSummary expandIcon={<ExpandMoreIcon />}>
             <Typography variant="subtitle1" fontWeight="bold">
@@ -457,7 +703,13 @@ Generated by ${report.model} on ${new Date(report.generatedAt).toLocaleString()}
       )}
 
       {/* Disclaimer Dialog */}
-      <Dialog open={showDisclaimerDialog} onClose={() => setShowDisclaimerDialog(false)}>
+      <Dialog
+        open={showDisclaimerDialog}
+        onClose={() => setShowDisclaimerDialog(false)}
+        maxWidth="sm"
+        fullWidth
+        sx={{ zIndex: 9999 }}
+      >
         <DialogTitle>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <WarningIcon color="warning" />

@@ -25,12 +25,31 @@ router.post('/analyze-study', async (req, res) => {
 
     // Get frame image
     const frameCacheService = getFrameCacheService();
-    const frameBuffer = await frameCacheService.getFrame(studyInstanceUID, frameIndex);
+    let frameBuffer = await frameCacheService.getFrame(studyInstanceUID, frameIndex);
+
+    // If frame not found, try to cache it first
+    if (!frameBuffer) {
+      console.log(`⚠️  Frame not cached, attempting to cache frame ${frameIndex} for study ${studyInstanceUID}`);
+      
+      try {
+        // Try to cache the frame from Orthanc
+        await frameCacheService.cacheFrame(studyInstanceUID, frameIndex);
+        
+        // Try to get it again
+        frameBuffer = await frameCacheService.getFrame(studyInstanceUID, frameIndex);
+        
+        if (frameBuffer) {
+          console.log(`✅ Successfully cached and retrieved frame ${frameIndex}`);
+        }
+      } catch (cacheError) {
+        console.error(`❌ Failed to cache frame:`, cacheError.message);
+      }
+    }
 
     if (!frameBuffer) {
       return res.status(404).json({
         success: false,
-        message: 'Frame not found'
+        message: 'Frame not found. Please ensure the study is loaded in the viewer first, or check if the study exists in Orthanc.'
       });
     }
 
@@ -45,7 +64,8 @@ router.post('/analyze-study', async (req, res) => {
       studyInstanceUID,
       frameBuffer,
       modality,
-      patientContext
+      patientContext,
+      frameIndex
     );
 
     res.json({
@@ -333,6 +353,93 @@ router.get('/study/:studyInstanceUID/analysis', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to retrieve AI analysis',
+      error: error.message
+    });
+  }
+});
+
+/**
+ * GET /api/medical-ai/reports/:reportId/pdf
+ * Generate and download PDF report
+ */
+router.get('/reports/:reportId/pdf', async (req, res) => {
+  try {
+    const { reportId } = req.params;
+    const path = require('path');
+    const fs = require('fs');
+    
+    // Load report JSON
+    const reportPath = path.join(__dirname, '../../backend/ai_reports', `${reportId}.json`);
+    
+    if (!fs.existsSync(reportPath)) {
+      return res.status(404).json({
+        success: false,
+        message: 'Report not found'
+      });
+    }
+    
+    const reportData = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
+    
+    // Generate PDF
+    const { getAIReportPDFGenerator } = require('../services/ai-report-pdf-generator');
+    const pdfGenerator = getAIReportPDFGenerator();
+    
+    const pdfPath = path.join(__dirname, '../../backend/ai_reports', `${reportId}.pdf`);
+    await pdfGenerator.generatePDF(reportData, pdfPath);
+    
+    // Send PDF file
+    res.download(pdfPath, `AI-Report-${reportId}.pdf`, (err) => {
+      if (err) {
+        console.error('Error sending PDF:', err);
+      }
+      // Optionally delete PDF after sending
+      // fs.unlinkSync(pdfPath);
+    });
+  } catch (error) {
+    console.error('Failed to generate PDF:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to generate PDF',
+      error: error.message
+    });
+  }
+});
+
+/**
+ * GET /api/medical-ai/reports/images/:filename
+ * Serve saved report images
+ */
+router.get('/reports/images/:filename', async (req, res) => {
+  try {
+    const { filename } = req.params;
+    const path = require('path');
+    const fs = require('fs');
+    
+    // Validate filename (security)
+    if (!filename.match(/^[a-zA-Z0-9_-]+\.(png|jpg|jpeg)$/)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid filename'
+      });
+    }
+    
+    const imagePath = path.join(__dirname, '../../backend/ai_reports/images', filename);
+    
+    // Check if file exists
+    if (!fs.existsSync(imagePath)) {
+      return res.status(404).json({
+        success: false,
+        message: 'Image not found'
+      });
+    }
+    
+    // Send image file
+    res.sendFile(imagePath);
+  } catch (error) {
+    console.error('Failed to serve image:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to serve image',
       error: error.message
     });
   }

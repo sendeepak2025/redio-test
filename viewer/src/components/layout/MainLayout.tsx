@@ -41,6 +41,7 @@ import {
 } from '@mui/icons-material'
 import { useAppDispatch } from '../../store/hooks'
 import { logout } from '../../store/slices/authSlice'
+import { Calendar1Icon } from 'lucide-react'
 
 const drawerWidth = 280
 
@@ -98,6 +99,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard' },
         { text: 'Worklist', icon: <AssignmentIcon />, path: '/worklist' },
         { text: 'Patients', icon: <PeopleIcon />, path: '/patients' },
+        { text: 'Follow Ups', icon: <Calendar1Icon />, path: '/followups' },
         { text: 'Studies', icon: <FolderIcon />, path: '/orthanc' },
         { text: 'Prior Auth', icon: <MedicalIcon />, path: '/prior-auth' },
         { text: 'Billing', icon: <BillingIcon />, path: '/billing' },
@@ -274,6 +276,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
             {location.pathname === '/dashboard' && 'Dashboard'}
             {location.pathname === '/worklist' && 'Study Worklist'}
             {location.pathname === '/patients' && 'Patients'}
+            {location.pathname === '/followups' && 'Follow Ups'}
             {location.pathname === '/system-monitoring' && 'System Monitoring'}
             {location.pathname === '/orthanc' && 'Studies'}
             {location.pathname === '/billing' && 'Billing & Superbills'}

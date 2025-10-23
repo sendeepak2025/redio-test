@@ -1,0 +1,119 @@
+╔══════════════════════════════════════════════════════════════╗
+║          🚀 AI SERVICES - QUICK START GUIDE                  ║
+╚══════════════════════════════════════════════════════════════╝
+
+✅ EVERYTHING IS READY TO START!
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📁 FILES CREATED:
+
+  ai-services/
+  ├── medsigclip_server.py      ✅ Classification service
+  ├── medgemma_server.py         ✅ Report generation
+  ├── requirements.txt           ✅ Dependencies
+  ├── start-ai-services.bat      ✅ START SCRIPT
+  ├── stop-ai-services.bat       ✅ STOP SCRIPT
+  └── test-ai-services.bat       ✅ TEST SCRIPT
+
+  server/.env                     ✅ Updated with AI config
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🎯 START IN 3 STEPS:
+
+  1️⃣  START AI SERVICES
+      
+      cd G:\RADIOLOGY\redio-test\ai-services
+      .\start-ai-services.bat
+      
+      ⏱️  First time: 2-3 minutes (installs dependencies)
+      ⏱️  After that: 10 seconds
+
+  2️⃣  RESTART BACKEND
+      
+      cd G:\RADIOLOGY\redio-test\server
+      npm restart
+
+  3️⃣  TEST IN BROWSER
+      
+      Open: http://localhost:5173
+      Upload DICOM → Open Viewer → Click "AI Analysis"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🧪 TESTING:
+
+  Test AI Services:
+  ─────────────────
+  curl http://localhost:5001/health  (MedSigLIP)
+  curl http://localhost:5002/health  (MedGemma)
+
+  Or run:
+  ───────
+  cd ai-services
+  .\test-ai-services.bat
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🛑 STOPPING:
+
+  cd ai-services
+  .\stop-ai-services.bat
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📊 WHAT YOU GET (DEMO MODE):
+
+  ✅ Fast responses (200ms - 1 second)
+  ✅ Works on any PC (no GPU needed)
+  ✅ Realistic-looking reports
+  ✅ Full UI integration
+  ⚠️  Results use simple heuristics (not real AI yet)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔧 TROUBLESHOOTING:
+
+  Port in use?
+  ────────────
+  .\stop-ai-services.bat
+  .\start-ai-services.bat
+
+  Services not responding?
+  ────────────────────────
+  Check the command windows titled:
+  - "MedSigLIP"
+  - "MedGemma"
+
+  Dependencies failed?
+  ────────────────────
+  cd ai-services
+  python -m venv venv
+  .\venv\Scripts\Activate.ps1
+  pip install -r requirements.txt
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📚 DOCUMENTATION:
+
+  Quick Start:    START_AI_LOCALLY.md
+  Full Guide:     LOCAL_AI_SETUP_WINDOWS.md
+  Cloud Setup:    AI_CLOUD_SETUP_GUIDE.md
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🎉 READY TO START!
+
+Run this now:
+
+  cd G:\RADIOLOGY\redio-test\ai-services
+  .\start-ai-services.bat
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Status: ✅ READY
+Mode:   🎭 DEMO (no GPU required)
+Speed:  ⚡ FAST (200ms - 1s)
+
+╚══════════════════════════════════════════════════════════════╝

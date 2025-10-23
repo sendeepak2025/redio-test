@@ -1,0 +1,33 @@
+# AI Services Requirements
+# Install with: pip install -r requirements.txt
+
+# Core Dependencies
+flask==3.0.0
+flask-cors==4.0.0
+pillow==10.1.0
+numpy==1.24.3
+requests==2.31.0
+
+# Deep Learning (Optional - for real AI models)
+torch==2.1.0
+torchvision==0.16.0
+transformers==4.35.0
+
+# Medical AI Models (Optional)
+# Uncomment when ready to use real models
+# huggingface-hub==0.19.4
+# timm==0.9.12
+# opencv-python==4.8.1.78
+
+# Cloud AI APIs (Optional)
+# google-cloud-healthcare==1.11.0
+# boto3==1.29.7  # AWS
+# azure-ai-vision==0.15.1b1  # Azure
+
+# Image Processing
+scikit-image==0.22.0
+pydicom==2.4.3
+
+# Utilities
+python-dotenv==1.0.0
+pyyaml==6.0.1

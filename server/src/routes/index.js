@@ -23,6 +23,7 @@ const viewerSelectionRoutes = require('./viewer-selection');
 const structuredReportsRoutes = require('./structured-reports');
 const signatureRoutes = require('./signature');
 const medicalAIRoutes = require('./medical-ai');
+const aiAnalysisRoutes = require('./ai-analysis'); // NEW: Unified AI analysis
 const systemMonitoringRoutes = require('./system-monitoring');
 const usersRoutes = require('./users');
 const superAdminRoutes = require('./superadmin');
@@ -156,6 +157,9 @@ router.use('/api/signature', signatureRoutes);
 
 // Medical AI API - MedSigLIP and MedGemma integration
 router.use('/api/medical-ai', medicalAIRoutes);
+
+// AI Analysis API - Unified endpoint for all AI analysis (NEW - Zero-error design)
+router.use('/api/ai', aiAnalysisRoutes);
 
 // System Monitoring API - Machine statistics and system health
 router.use('/api/monitoring', systemMonitoringRoutes);

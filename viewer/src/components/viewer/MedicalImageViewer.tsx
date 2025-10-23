@@ -117,6 +117,7 @@ import ToastNotification from '../common/ToastNotification'
 import { useVolumeRenderer } from '../../hooks/useVolumeRenderer'
 import { TRANSFER_FUNCTIONS } from '../../utils/volumeRenderer'
 import { validateAnnotationColor, MEDICAL_ANNOTATION_COLORS } from '../../utils/colorUtils'
+import { AutoAnalysisPopup } from '../ai/AutoAnalysisPopup'
 
 // Types for medical imaging
 interface MedicalImageViewerProps {
@@ -389,12 +390,25 @@ export const MedicalImageViewer: React.FC<MedicalImageViewerProps> = ({
   const [pixelSpacing] = useState([0.35, 0.35]) // From real DICOM metadata
   const [isAnalysisPanelOpen, setIsAnalysisPanelOpen] = useState(false) // Analysis panel toggle - opens via button
   const [isToolsHistoryOpen, setIsToolsHistoryOpen] = useState(false) // Tools history toggle
-  
+
   // AI Assistant states
   const [isAIAssistantOpen, setIsAIAssistantOpen] = useState(false)
   const [aiAnalyzing, setAiAnalyzing] = useState(false)
   const [aiFindings, setAiFindings] = useState<any[]>([])
   const [selectedAIModel, setSelectedAIModel] = useState<'medsigclip' | 'medgemma'>('medsigclip')
+
+  // Enhanced AI Analysis Tracking (slice-wise)
+  const [sliceAnalysisData, setSliceAnalysisData] = useState<Map<number, any>>(new Map())
+  const [sliceAnalysisStatus, setSliceAnalysisStatus] = useState<Map<number, 'pending' | 'analyzing' | 'complete' | 'error'>>(new Map())
+  const [currentAnalysisId, setCurrentAnalysisId] = useState<string | null>(null)
+  const [multiSliceAnalysisIds, setMultiSliceAnalysisIds] = useState<string[]>([])
+  const [isDownloadReady, setIsDownloadReady] = useState(false)
+  const [downloadReportId, setDownloadReportId] = useState<string | null>(null)
+
+  // AutoAnalysisPopup states (DIRECT MODE)
+  const [autoAnalysisOpen, setAutoAnalysisOpen] = useState(false)
+  const [autoAnalysisMode, setAutoAnalysisMode] = useState<'single' | 'all'>('single')
+  const [autoAnalysisSlices, setAutoAnalysisSlices] = useState<number[]>([])
 
   // Study management
   const [availableStudies, setAvailableStudies] = useState<any[]>([])
@@ -603,7 +617,7 @@ export const MedicalImageViewer: React.FC<MedicalImageViewerProps> = ({
         const frameUrl = frameUrls[frameIndex]
         console.log(`🖼️ Loading frame ${frameIndex} from: ${frameUrl}`)
         img.src = frameUrl
-        
+
         await new Promise((resolve, reject) => {
           img!.onload = () => {
             console.log(`✅ Frame ${frameIndex} loaded successfully (${img!.width}x${img!.height})`)
@@ -640,7 +654,7 @@ export const MedicalImageViewer: React.FC<MedicalImageViewerProps> = ({
 
       // Apply window/level (simplified)
       ctx.globalAlpha = 1.0
-      
+
       // Smart image smoothing based on zoom level
       // Enable smoothing when zoomed in to prevent pixelation
       // Disable when at 1:1 or zoomed out for crisp details
@@ -3649,116 +3663,206 @@ export const MedicalImageViewer: React.FC<MedicalImageViewerProps> = ({
     }
   }, [measurements, annotations, currentStudyId, metadata, radiologistSignature, structuredReportingService])
 
-  // AI Analysis Handler
+  // AI Analysis Handler - DIRECT MODE (Opens AutoAnalysisPopup)
   const handleAIAnalysis = useCallback(async () => {
-    if (!canvasRef.current) return
+    if (!canvasRef.current) {
+      alert('Canvas not available. Please make sure an image is loaded.')
+      return
+    }
 
-    setAiAnalyzing(true)
-    setAiFindings([])
+    console.log('🚀 [DIRECT] Opening AutoAnalysisPopup for current frame...')
+
+    // Close AI Assistant dialog
+    setIsAIAssistantOpen(false)
+
+    // Open AutoAnalysisPopup with current frame
+    setAutoAnalysisOpen(true)
+    setAutoAnalysisMode('single')
+    setAutoAnalysisSlices([currentFrameIndex])
+  }, [canvasRef, currentFrameIndex])
+
+  // Multi-Slice AI Analysis Handler - DIRECT MODE (Opens AutoAnalysisPopup)
+  const handleMultiSliceAnalysis = useCallback(async () => {
+    if (!canvasRef.current || totalFrames === 0) {
+      alert('No frames available for multi-slice analysis.')
+      return
+    }
+
+    console.log(`🚀 [DIRECT] Opening AutoAnalysisPopup for all ${totalFrames} slices...`)
+
+    // Close AI Assistant dialog
+    setIsAIAssistantOpen(false)
+
+    // Generate array of all slice indices
+    const allSlices = Array.from({ length: totalFrames }, (_, i) => i)
+
+    // Open AutoAnalysisPopup with all slices
+    setAutoAnalysisOpen(true)
+    setAutoAnalysisMode('all')
+    setAutoAnalysisSlices(allSlices)
+  }, [canvasRef, totalFrames])
+
+  // Download AI Report Handler
+  const handleDownloadAIReport = useCallback(async () => {
+    if (!downloadReportId) {
+      alert('No report available for download. Please run analysis first.')
+      return
+    }
 
     try {
-      let result;
+      console.log(`📥 Downloading report: ${downloadReportId}`)
 
-      if (selectedAIModel === 'medsigclip') {
-        // MedSigLIP - Image classification
-        const response = await fetch('/api/medical-ai/classify-image', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            studyInstanceUID,
-            frameIndex: currentFrameIndex
-          })
-        })
+      const downloadResponse = await fetch(`http://localhost:8001/api/ai/report/${downloadReportId}/download`)
 
-        if (response.ok) {
-          const data = await response.json()
-          if (data.success) {
-            // Convert classification to findings format
-            const findings = data.data.predictions?.map((pred: any, idx: number) => ({
-              label: pred.label,
-              confidence: pred.confidence,
-              severity: pred.confidence > 0.8 ? 'high' : pred.confidence > 0.5 ? 'medium' : 'low',
-              description: `Detected with ${(pred.confidence * 100).toFixed(1)}% confidence`,
-              bbox: null // MedSigLIP classification doesn't provide bounding boxes
-            })) || []
-            setAiFindings(findings)
-          }
-        }
-      } else {
-        // MedGemma - Report generation
-        const response = await fetch('/api/medical-ai/generate-report', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            studyInstanceUID,
-            frameIndex: currentFrameIndex,
-            patientContext: {
-              modality: metadata?.study_info?.modality,
-              patientName: metadata?.patient_info?.name
-            }
-          })
-        })
-
-        if (response.ok) {
-          const data = await response.json()
-          if (data.success) {
-            // Convert report to findings format
-            const findings = [
-              {
-                label: 'Clinical Findings',
-                confidence: 0.9,
-                severity: 'low',
-                description: data.data.findings || 'Analysis complete',
-                bbox: null
-              },
-              {
-                label: 'Impression',
-                confidence: 0.9,
-                severity: 'low',
-                description: data.data.impression || 'No significant abnormalities detected',
-                bbox: null
-              }
-            ]
-            if (data.data.recommendations) {
-              findings.push({
-                label: 'Recommendations',
-                confidence: 0.85,
-                severity: 'low',
-                description: data.data.recommendations,
-                bbox: null
-              })
-            }
-            setAiFindings(findings)
-          }
-        }
+      if (!downloadResponse.ok) {
+        throw new Error(`Download failed: ${downloadResponse.status}`)
       }
 
-      // Add AI annotation marker on canvas
-      const aiMarker = {
-        id: `ai-marker-${Date.now()}`,
-        type: 'text' as const,
-        points: [{ x: 20, y: 20 }],
-        text: `✨ AI Analysis: ${selectedAIModel === 'medsigclip' ? 'MedSigLIP' : 'MedGemma'}`,
-        color: '#667eea',
-        strokeWidth: 1,
-        fontSize: 12,
-        timestamp: Date.now(),
-        author: 'AI Assistant',
-        frameIndex: currentFrameIndex
-      }
-      setAnnotations(prev => [...prev, aiMarker])
+      const blob = await downloadResponse.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
 
-    } catch (error) {
-      console.error('AI Analysis error:', error)
-      alert('AI analysis failed. The AI service may be unavailable.')
-    } finally {
-      setAiAnalyzing(false)
+      // Determine filename based on analysis type
+      const isMultiSlice = multiSliceAnalysisIds.length > 0
+      const filename = isMultiSlice
+        ? `AI_MultiSlice_Report_${totalFrames}slices_${downloadReportId}.pdf`
+        : `AI_Report_Slice${currentFrameIndex}_${downloadReportId}.pdf`
+
+      a.download = filename
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      window.URL.revokeObjectURL(url)
+
+      console.log(`✅ Report downloaded: ${filename}`)
+      alert('✅ Report downloaded successfully!\n\nFile: ' + filename)
+
+    } catch (error: any) {
+      console.error('❌ Download error:', error)
+      alert('Failed to download report: ' + error.message)
     }
-  }, [canvasRef, selectedAIModel, studyInstanceUID, currentFrameIndex, metadata])
+  }, [downloadReportId, multiSliceAnalysisIds, totalFrames, currentFrameIndex])
+
+  // Retry Failed Slice Handler
+  const handleRetryFailedSlice = useCallback(async (frameIndex: number) => {
+    if (aiAnalyzing) {
+      alert('Analysis already in progress. Please wait.')
+      return
+    }
+
+    console.log(`🔄 Retrying analysis for slice ${frameIndex}...`)
+    setSliceAnalysisStatus(prev => new Map(prev).set(frameIndex, 'analyzing'))
+
+    try {
+      const response = await fetch('http://localhost:8001/api/ai/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'single',
+          studyInstanceUID,
+          seriesInstanceUID: metadata?.series_info?.seriesInstanceUID,
+          instanceUID: metadata?.instance_info?.sopInstanceUID,
+          frameIndex,
+          options: {
+            saveResults: true,
+            includeSnapshot: true,
+            forceReanalyze: true // Force reanalysis
+          }
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error(`Backend API error: ${response.status}`)
+      }
+
+      const result = await response.json()
+
+      if (result.success) {
+        // Store slice data
+        const sliceData = {
+          frameIndex,
+          analysisId: result.analysisId,
+          timestamp: new Date().toISOString(),
+          classification: result.results?.classification,
+          report: result.results?.report,
+          combined: result.results?.combined,
+          metadata: {
+            studyInstanceUID,
+            seriesInstanceUID: metadata?.series_info?.seriesInstanceUID,
+            modality: metadata?.study_info?.modality
+          }
+        }
+
+        setSliceAnalysisData(prev => new Map(prev).set(frameIndex, sliceData))
+        setSliceAnalysisStatus(prev => new Map(prev).set(frameIndex, 'complete'))
+
+        // Add to analysis IDs if not already there
+        if (!multiSliceAnalysisIds.includes(result.analysisId)) {
+          setMultiSliceAnalysisIds(prev => [...prev, result.analysisId])
+        }
+
+        console.log(`✅ Retry successful for slice ${frameIndex}`)
+        alert('✅ Slice ' + frameIndex + ' analyzed successfully!\n\nYou can now regenerate the consolidated report.')
+      } else {
+        throw new Error(result.error || 'Analysis failed')
+      }
+
+    } catch (error: any) {
+      console.error(`❌ Retry failed for slice ${frameIndex}:`, error)
+      setSliceAnalysisStatus(prev => new Map(prev).set(frameIndex, 'error'))
+      alert('Failed to analyze slice ' + frameIndex + ': ' + error.message + '\n\nYou can try again.')
+    }
+  }, [aiAnalyzing, studyInstanceUID, metadata, multiSliceAnalysisIds])
+
+  // Regenerate Consolidated Report Handler
+  const handleRegenerateConsolidatedReport = useCallback(async () => {
+    const completeSlices = Array.from(sliceAnalysisData.values())
+
+    if (completeSlices.length === 0) {
+      alert('No analysis data available. Please run analysis first.')
+      return
+    }
+
+    try {
+      console.log('📄 Regenerating consolidated report...')
+
+      const failedSlices: number[] = []
+      for (let i = 0; i < totalFrames; i++) {
+        if (sliceAnalysisStatus.get(i) === 'error' || !sliceAnalysisData.has(i)) {
+          failedSlices.push(i)
+        }
+      }
+
+      const reportResponse = await fetch('http://localhost:8001/api/ai/report/consolidated', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          analysisIds: multiSliceAnalysisIds,
+          studyInstanceUID,
+          totalFrames,
+          successCount: completeSlices.length,
+          failedSlices,
+          sliceData: completeSlices
+        })
+      })
+
+      if (!reportResponse.ok) {
+        throw new Error(`Report generation failed: ${reportResponse.status}`)
+      }
+
+      const reportResult = await reportResponse.json()
+      setDownloadReportId(reportResult.reportId)
+      setIsDownloadReady(true)
+
+      console.log('✅ Consolidated report regenerated:', reportResult.reportId)
+      alert('✅ Consolidated report regenerated!\n\nSlices included: ' + completeSlices.length + '/' + totalFrames + '\n\nClick Download Report to get the updated PDF.')
+
+    } catch (error: any) {
+      console.error('❌ Report regeneration error:', error)
+      alert('Failed to regenerate report: ' + error.message)
+    }
+  }, [sliceAnalysisData, sliceAnalysisStatus, multiSliceAnalysisIds, studyInstanceUID, totalFrames])
 
   const handleExportReport = useCallback(async (format: string) => {
     if (!currentReport) {
@@ -4392,24 +4496,24 @@ export const MedicalImageViewer: React.FC<MedicalImageViewerProps> = ({
 
     const resizeCanvas = () => {
       const { clientWidth, clientHeight } = container
-      
+
       // Support high-DPI displays (Retina, 4K, etc.)
       const dpr = window.devicePixelRatio || 1
-      
+
       // Set actual canvas size (accounting for device pixel ratio)
       canvas.width = clientWidth * dpr
       canvas.height = clientHeight * dpr
-      
+
       // Scale canvas context to match device pixel ratio
       const ctx = canvas.getContext('2d')
       if (ctx) {
         ctx.scale(dpr, dpr)
       }
-      
+
       // Set display size (CSS pixels)
       canvas.style.width = `${clientWidth}px`
       canvas.style.height = `${clientHeight}px`
-      
+
       drawFrame(currentFrameIndex)
     }
 
@@ -6279,9 +6383,9 @@ export const MedicalImageViewer: React.FC<MedicalImageViewerProps> = ({
           }
         }}
       >
-        <DialogTitle sx={{ 
-          display: 'flex', 
-          alignItems: 'center', 
+        <DialogTitle sx={{
+          display: 'flex',
+          alignItems: 'center',
           gap: 2,
           background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
           color: 'white'
@@ -6292,7 +6396,7 @@ export const MedicalImageViewer: React.FC<MedicalImageViewerProps> = ({
             <Typography variant="caption">Powered by MedSigLIP & MedGemma</Typography>
           </Box>
         </DialogTitle>
-        
+
         <DialogContent sx={{ mt: 2 }}>
           {/* Model Selection */}
           <Box sx={{ mb: 3 }}>
@@ -6312,9 +6416,9 @@ export const MedicalImageViewer: React.FC<MedicalImageViewerProps> = ({
                 }}
               >
                 MedSigLIP
-                <Chip 
-                  label="Vision" 
-                  size="small" 
+                <Chip
+                  label="Vision"
+                  size="small"
                   sx={{ ml: 1, height: 20 }}
                   color="primary"
                 />
@@ -6331,9 +6435,9 @@ export const MedicalImageViewer: React.FC<MedicalImageViewerProps> = ({
                 }}
               >
                 MedGemma
-                <Chip 
-                  label="Language" 
-                  size="small" 
+                <Chip
+                  label="Language"
+                  size="small"
                   sx={{ ml: 1, height: 20 }}
                   color="secondary"
                 />
@@ -6348,12 +6452,99 @@ export const MedicalImageViewer: React.FC<MedicalImageViewerProps> = ({
                 {selectedAIModel === 'medsigclip' ? '🔍 MedSigLIP' : '💬 MedGemma'}
               </Typography>
               <Typography variant="body2" color="grey.300">
-                {selectedAIModel === 'medsigclip' 
+                {selectedAIModel === 'medsigclip'
                   ? 'Medical image understanding model that can detect anatomical structures, abnormalities, and pathologies in real-time on the canvas.'
                   : 'Medical language model that provides detailed clinical interpretations, differential diagnoses, and recommendations based on visual findings.'}
               </Typography>
             </CardContent>
           </Card>
+
+          {/* Download Report Button */}
+          {isDownloadReady && downloadReportId && (
+            <Box sx={{ mb: 2 }}>
+              <Button
+                onClick={handleDownloadAIReport}
+                variant="contained"
+                startIcon={<DownloadIcon />}
+                fullWidth
+                sx={{
+                  background: 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)',
+                  color: 'white',
+                  fontWeight: 'bold',
+                  '&:hover': {
+                    background: 'linear-gradient(135deg, #38ef7d 0%, #11998e 100%)',
+                  }
+                }}
+              >
+                📥 Download Report (Ready!)
+              </Button>
+            </Box>
+          )}
+
+          {/* Slice Analysis Status */}
+          {sliceAnalysisStatus.size > 0 && (
+            <Box sx={{ mb: 2, p: 2, bgcolor: 'rgba(0,0,0,0.3)', borderRadius: 2 }}>
+              <Typography variant="subtitle2" gutterBottom color="grey.300">
+                Slice Analysis Status:
+              </Typography>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
+                {Array.from(sliceAnalysisStatus.entries()).map(([frameIdx, status]) => (
+                  <Tooltip
+                    key={frameIdx}
+                    title={`Slice ${frameIdx}: ${status}${status === 'error' ? ' - Click to retry' : ''}`}
+                  >
+                    <Chip
+                      label={frameIdx}
+                      size="small"
+                      onClick={status === 'error' ? () => handleRetryFailedSlice(frameIdx) : undefined}
+                      sx={{
+                        minWidth: '32px',
+                        bgcolor:
+                          status === 'complete' ? 'rgba(56, 239, 125, 0.2)' :
+                            status === 'analyzing' ? 'rgba(102, 126, 234, 0.2)' :
+                              status === 'error' ? 'rgba(239, 56, 56, 0.2)' :
+                                'rgba(128, 128, 128, 0.2)',
+                        color:
+                          status === 'complete' ? '#38ef7d' :
+                            status === 'analyzing' ? '#667eea' :
+                              status === 'error' ? '#ef3838' :
+                                '#808080',
+                        border: '1px solid',
+                        borderColor:
+                          status === 'complete' ? '#38ef7d' :
+                            status === 'analyzing' ? '#667eea' :
+                              status === 'error' ? '#ef3838' :
+                                '#808080',
+                        cursor: status === 'error' ? 'pointer' : 'default',
+                        fontWeight: 'bold',
+                        '&:hover': status === 'error' ? {
+                          bgcolor: 'rgba(239, 56, 56, 0.4)',
+                        } : {}
+                      }}
+                    />
+                  </Tooltip>
+                ))}
+              </Box>
+              <Typography variant="caption" color="grey.400" sx={{ mt: 1, display: 'block' }}>
+                ✅ Complete: {Array.from(sliceAnalysisStatus.values()).filter(s => s === 'complete').length} |
+                ⏳ Analyzing: {Array.from(sliceAnalysisStatus.values()).filter(s => s === 'analyzing').length} |
+                ❌ Error: {Array.from(sliceAnalysisStatus.values()).filter(s => s === 'error').length}
+                {Array.from(sliceAnalysisStatus.values()).filter(s => s === 'error').length > 0 && ' (Click to retry)'}
+              </Typography>
+              {Array.from(sliceAnalysisStatus.values()).filter(s => s === 'error').length > 0 && (
+                <Button
+                  onClick={handleRegenerateConsolidatedReport}
+                  variant="outlined"
+                  size="small"
+                  startIcon={<RefreshIcon />}
+                  fullWidth
+                  sx={{ mt: 1, borderColor: '#667eea', color: '#667eea' }}
+                >
+                  Regenerate Report with Current Data
+                </Button>
+              )}
+            </Box>
+          )}
 
           {/* AI Findings */}
           {aiFindings.length > 0 && (
@@ -6362,7 +6553,7 @@ export const MedicalImageViewer: React.FC<MedicalImageViewerProps> = ({
                 AI Findings:
               </Typography>
               {aiFindings.map((finding: any, index: number) => (
-                <Alert 
+                <Alert
                   key={index}
                   severity={finding.severity === 'high' ? 'error' : finding.severity === 'medium' ? 'warning' : 'info'}
                   sx={{ mb: 1 }}
@@ -6393,26 +6584,50 @@ export const MedicalImageViewer: React.FC<MedicalImageViewerProps> = ({
           </Box>
         </DialogContent>
 
-        <DialogActions sx={{ p: 3, gap: 1 }}>
-          <Button 
+        <DialogActions sx={{ p: 3, gap: 1, flexDirection: 'column' }}>
+          <Box sx={{ display: 'flex', gap: 1, width: '100%' }}>
+            <Button
+              onClick={handleAIAnalysis}
+              variant="contained"
+              disabled={aiAnalyzing}
+              startIcon={aiAnalyzing ? <RefreshIcon className="spin" /> : <AIIcon />}
+              fullWidth
+              sx={{
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                '&:hover': {
+                  background: 'linear-gradient(135deg, #764ba2 0%, #667eea 100%)',
+                }
+              }}
+            >
+              {aiAnalyzing ? 'Analyzing...' : 'Analyze Current Frame'}
+            </Button>
+
+            <Button
+              onClick={handleMultiSliceAnalysis}
+              variant="outlined"
+              disabled={aiAnalyzing || totalFrames <= 1}
+              startIcon={<HelpIcon />}
+              fullWidth
+              sx={{
+                borderColor: '#667eea',
+                color: '#667eea',
+                '&:hover': {
+                  borderColor: '#764ba2',
+                  bgcolor: 'rgba(102, 126, 234, 0.1)'
+                }
+              }}
+            >
+              Analyze All {totalFrames} Slices
+            </Button>
+          </Box>
+
+          <Button
             onClick={() => setIsAIAssistantOpen(false)}
-            variant="outlined"
+            variant="text"
+            fullWidth
+            sx={{ color: 'grey.400' }}
           >
             Close
-          </Button>
-          <Button
-            onClick={handleAIAnalysis}
-            variant="contained"
-            disabled={aiAnalyzing}
-            startIcon={aiAnalyzing ? <RefreshIcon className="spin" /> : <AIIcon />}
-            sx={{
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              '&:hover': {
-                background: 'linear-gradient(135deg, #764ba2 0%, #667eea 100%)',
-              }
-            }}
-          >
-            {aiAnalyzing ? 'Analyzing...' : 'Analyze Current Frame'}
           </Button>
         </DialogActions>
       </Dialog>
@@ -7313,6 +7528,16 @@ export const MedicalImageViewer: React.FC<MedicalImageViewerProps> = ({
       <KeyboardShortcutsHelp
         open={showShortcutsHelp}
         onClose={() => setShowShortcutsHelp(false)}
+      />
+
+      {/* AutoAnalysisPopup - DIRECT AI Analysis */}
+      <AutoAnalysisPopup
+        open={autoAnalysisOpen}
+        onClose={() => setAutoAnalysisOpen(false)}
+        studyInstanceUID={studyInstanceUID}
+        seriesInstanceUID={metadata?.series_info?.seriesInstanceUID}
+        slices={autoAnalysisSlices}
+        mode={autoAnalysisMode}
       />
 
       {/* Toast Notification System */}

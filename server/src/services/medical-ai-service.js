@@ -15,12 +15,12 @@ class MedicalAIService {
     this.medSigLIPUrl = config.medSigLIPUrl || process.env.MEDSIGCLIP_API_URL || 'http://localhost:5001';
     this.medGemma4BUrl = config.medGemma4BUrl || process.env.MEDGEMMA_4B_API_URL || 'http://localhost:5002';
     this.medGemma27BUrl = config.medGemma27BUrl || process.env.MEDGEMMA_27B_API_URL || 'http://localhost:5003';
-    
+
     // Feature flags
     this.enableMedSigLIP = config.enableMedSigLIP !== false;
     this.enableMedGemma4B = config.enableMedGemma4B !== false;
     this.enableMedGemma27B = config.enableMedGemma27B || false; // Disabled by default (high resource)
-    
+
     // Timeouts
     this.classificationTimeout = 5000; // 5s for classification
     this.reportGenerationTimeout = 30000; // 30s for report generation
@@ -38,7 +38,7 @@ class MedicalAIService {
 
     try {
       console.log('🔍 MedSigLIP: Classifying image...');
-      
+
       const response = await axios.post(
         `${this.medSigLIPUrl}/classify`,
         {
@@ -74,7 +74,7 @@ class MedicalAIService {
 
     try {
       console.log('📝 MedGemma-4B: Generating radiology report...');
-      
+
       const response = await axios.post(
         `${this.medGemma4BUrl}/generate-report`,
         {
@@ -123,7 +123,7 @@ class MedicalAIService {
 
     try {
       console.log('🧠 MedGemma-27B: Performing clinical reasoning...');
-      
+
       const response = await axios.post(
         `${this.medGemma27BUrl}/clinical-reasoning`,
         {
@@ -164,26 +164,28 @@ class MedicalAIService {
 
   /**
    * Comprehensive analysis pipeline
-   * Combines MedSigLIP + MedGemma for complete analysis
+   * Combines MedSigLIP + MedGemma + Detection for complete analysis
+   * ALWAYS generates a complete report using AIReportGenerator
    */
-  async analyzeStudy(studyInstanceUID, imageBuffer, modality, patientContext = {}) {
+  async analyzeStudy(studyInstanceUID, imageBuffer, modality, patientContext = {}, frameIndex = 0) {
     console.log(`🏥 Starting comprehensive AI analysis for study: ${studyInstanceUID}`);
-    
+
     // Check if AI services are available
     const health = await this.healthCheck();
     const aiServicesAvailable = health.medSigLIP.available || health.medGemma4B.available;
-    
-    // If no AI services available, return mock data for demo
+
+    // FAIL IMMEDIATELY if no AI services are available
     if (!aiServicesAvailable) {
-      console.warn('⚠️ AI services not available - returning demo data');
-      return this.generateMockAnalysis(studyInstanceUID, modality, patientContext);
+      console.error('❌ AI services not available - cannot proceed with analysis');
+      throw new Error('AI services not available. Please start MedSigLIP (port 5001) and/or MedGemma (port 5002).');
     }
-    
-    const results = {
-      studyInstanceUID,
-      modality,
-      timestamp: new Date(),
-      analyses: {}
+
+    const aiResults = {
+      classification: null,
+      report: null,
+      detections: null,
+      clinicalReasoning: null,
+      demoMode: false
     };
 
     // 1. Fast classification with MedSigLIP (parallel)
@@ -192,38 +194,83 @@ class MedicalAIService {
     // 2. Report generation with MedGemma-4B (parallel)
     const reportPromise = this.generateRadiologyReport(imageBuffer, modality, patientContext);
 
-    // Wait for both to complete
-    const [classification, report] = await Promise.all([
+    // 3. Abnormality detection (parallel)
+    const detectionPromise = this.detectAbnormalities(imageBuffer, modality);
+
+    // Wait for all to complete
+    const [classification, report, detections] = await Promise.all([
       classificationPromise,
-      reportPromise
+      reportPromise,
+      detectionPromise
     ]);
 
     if (classification) {
-      results.analyses.classification = classification;
+      aiResults.classification = classification;
     }
 
     if (report) {
-      results.analyses.report = report;
+      aiResults.report = report;
     }
 
-    // 3. Optional: Advanced reasoning with MedGemma-27B (if enabled and EHR data available)
+    if (detections) {
+      aiResults.detections = detections;
+    }
+
+    // 4. Optional: Advanced reasoning with MedGemma-27B (if enabled and EHR data available)
     if (this.enableMedGemma27B && patientContext.ehrData) {
       const reasoning = await this.performClinicalReasoning(
-        imageBuffer, 
-        modality, 
+        imageBuffer,
+        modality,
         patientContext.ehrData
       );
-      
+
       if (reasoning) {
-        results.analyses.clinicalReasoning = reasoning;
+        aiResults.clinicalReasoning = reasoning;
       }
     }
 
-    // 4. Save results to database
-    await this.saveAnalysisResults(studyInstanceUID, results);
+    // 5. Generate comprehensive structured report (ALWAYS)
+    const { getAIReportGenerator } = require('./ai-report-generator');
+    const reportGenerator = getAIReportGenerator();
+
+    const comprehensiveReport = await reportGenerator.generateComprehensiveReport({
+      studyInstanceUID,
+      modality,
+      patientContext,
+      aiResults,
+      frameIndex
+    }, imageBuffer);
+
+    // 6. Save results to database
+    await this.saveAnalysisResults(studyInstanceUID, comprehensiveReport);
 
     console.log(`✅ AI analysis complete for study: ${studyInstanceUID}`);
-    return results;
+    return comprehensiveReport;
+  }
+
+  /**
+   * Detect abnormalities with bounding boxes
+   */
+  async detectAbnormalities(imageBuffer, modality) {
+    try {
+      console.log('🔍 Detecting abnormalities...');
+
+      const { getAIDetectionService } = require('./ai-detection-service');
+      const detectionService = getAIDetectionService();
+
+      const detections = await detectionService.detectAbnormalities(imageBuffer, modality);
+
+      return {
+        detections: detections,
+        count: detections.length,
+        criticalCount: detections.filter(d => d.severity === 'CRITICAL').length,
+        highCount: detections.filter(d => d.severity === 'HIGH').length,
+        model: 'AI Detection Service'
+      };
+    } catch (error) {
+      console.error('Abnormality detection failed:', error.message);
+      return null;
+    }
   }
 
   /**
@@ -232,7 +279,7 @@ class MedicalAIService {
    */
   generateMockAnalysis(studyInstanceUID, modality, patientContext = {}) {
     console.log('📋 Generating mock AI analysis (AI services not running)');
-    
+
     return {
       studyInstanceUID,
       modality,
@@ -280,7 +327,7 @@ class MedicalAIService {
   async saveAnalysisResults(studyInstanceUID, results) {
     try {
       const Study = require('../models/Study');
-      
+
       await Study.findOneAndUpdate(
         { studyInstanceUID },
         {
@@ -292,7 +339,7 @@ class MedicalAIService {
         },
         { upsert: false }
       );
-      
+
       console.log(`💾 Saved AI analysis results for study: ${studyInstanceUID}`);
     } catch (error) {
       console.error('Failed to save AI analysis results:', error.message);
@@ -309,7 +356,7 @@ class MedicalAIService {
 
     try {
       console.log('🔎 MedSigLIP: Finding similar images...');
-      
+
       const response = await axios.post(
         `${this.medSigLIPUrl}/find-similar`,
         {
@@ -337,7 +384,7 @@ class MedicalAIService {
 
     try {
       console.log('📄 MedGemma: Summarizing medical text...');
-      
+
       const response = await axios.post(
         `${this.medGemma4BUrl}/summarize`,
         {

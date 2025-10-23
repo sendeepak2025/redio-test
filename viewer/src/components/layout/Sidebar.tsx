@@ -61,7 +61,7 @@ const navigationItems: NavigationItem[] = [
     label: 'Follow-ups',
     icon: <CalendarToday />,
     path: '/followups',
-    permission: 'studies:read',
+    permission: 'studies',
   },
   {
     id: 'viewer',
