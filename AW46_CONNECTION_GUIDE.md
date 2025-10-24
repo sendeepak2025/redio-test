@@ -213,7 +213,7 @@ This tests if AW 4.6 accepts DICOM connections.
 
 **Using Orthanc Web Interface:**
 
-1. Open browser: `http://localhost:8042`
+1. Open browser: `http://69.62.70.102:8042`
 2. Login: `orthanc` / `orthanc_secure_2024`
 3. Click **"Query/Retrieve"** in top menu
 4. Select **"AW_SERVER"** from dropdown
@@ -247,7 +247,7 @@ Test if you can query studies from AW 4.6.
 
 **Using Orthanc Web Interface:**
 
-1. Open: `http://localhost:8042`
+1. Open: `http://69.62.70.102:8042`
 2. Go to **"Query/Retrieve"**
 3. Select **"AW_SERVER"**
 4. Enter search criteria:
@@ -261,7 +261,7 @@ Test if you can query studies from AW 4.6.
 
 ```bash
 # Query all studies from today
-curl -X POST http://localhost:8042/modalities/AW_SERVER/query \
+curl -X POST http://69.62.70.102:8042/modalities/AW_SERVER/query \
   -u orthanc:orthanc_secure_2024 \
   -H "Content-Type: application/json" \
   -d '{
@@ -351,7 +351,7 @@ sleep 10
 
 ### Method A: Manual Retrieve via Orthanc Web Interface
 
-1. **Open Orthanc**: `http://localhost:8042`
+1. **Open Orthanc**: `http://69.62.70.102:8042`
 2. **Login**: `orthanc` / `orthanc_secure_2024`
 3. **Go to Query/Retrieve**
 4. **Select AW_SERVER** from dropdown
@@ -372,7 +372,7 @@ sleep 10
 
 ```bash
 # Step 1: Query studies
-QUERY_ID=$(curl -s -X POST http://localhost:8042/modalities/AW_SERVER/query \
+QUERY_ID=$(curl -s -X POST http://69.62.70.102:8042/modalities/AW_SERVER/query \
   -u orthanc:orthanc_secure_2024 \
   -H "Content-Type: application/json" \
   -d '{
@@ -383,11 +383,11 @@ QUERY_ID=$(curl -s -X POST http://localhost:8042/modalities/AW_SERVER/query \
   }' | jq -r '.ID')
 
 # Step 2: Get query results
-curl -s http://localhost:8042/queries/$QUERY_ID/answers \
+curl -s http://69.62.70.102:8042/queries/$QUERY_ID/answers \
   -u orthanc:orthanc_secure_2024
 
 # Step 3: Retrieve all results
-curl -X POST http://localhost:8042/queries/$QUERY_ID/retrieve \
+curl -X POST http://69.62.70.102:8042/queries/$QUERY_ID/retrieve \
   -u orthanc:orthanc_secure_2024 \
   -d "ORTHANC"
 ```
@@ -395,7 +395,7 @@ curl -X POST http://localhost:8042/queries/$QUERY_ID/retrieve \
 **Retrieve Specific Patient:**
 
 ```bash
-curl -X POST http://localhost:8042/modalities/AW_SERVER/query \
+curl -X POST http://69.62.70.102:8042/modalities/AW_SERVER/query \
   -u orthanc:orthanc_secure_2024 \
   -H "Content-Type: application/json" \
   -d '{
@@ -422,7 +422,7 @@ notepad sync-aw46.ps1
 
 ```powershell
 # sync-aw46.ps1
-$orthancUrl = "http://localhost:8042"
+$orthancUrl = "http://69.62.70.102:8042"
 $username = "orthanc"
 $password = "orthanc_secure_2024"
 $base64Auth = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("${username}:${password}"))
@@ -469,7 +469,7 @@ nano sync-aw46.sh
 #!/bin/bash
 # sync-aw46.sh
 
-ORTHANC_URL="http://localhost:8042"
+ORTHANC_URL="http://69.62.70.102:8042"
 USERNAME="orthanc"
 PASSWORD="orthanc_secure_2024"
 
@@ -599,7 +599,7 @@ Delay = 0
 
 ### Verify Studies in Orthanc
 
-1. **Open Orthanc Web**: `http://localhost:8042`
+1. **Open Orthanc Web**: `http://69.62.70.102:8042`
 2. **Check "All studies"** tab
 3. **Verify studies appear**
 
@@ -671,7 +671,7 @@ pm2 logs dicom-viewer-backend
 5. **Check Orthanc configuration:**
    ```bash
    # View current modalities
-   curl http://localhost:8042/modalities -u orthanc:orthanc_secure_2024
+   curl http://69.62.70.102:8042/modalities -u orthanc:orthanc_secure_2024
    ```
 
 ---
@@ -691,7 +691,7 @@ pm2 logs dicom-viewer-backend
 2. **Check query syntax:**
    ```bash
    # Try simple query
-   curl -X POST http://localhost:8042/modalities/AW_SERVER/query \
+   curl -X POST http://69.62.70.102:8042/modalities/AW_SERVER/query \
      -u orthanc:orthanc_secure_2024 \
      -H "Content-Type: application/json" \
      -d '{
@@ -731,7 +731,7 @@ pm2 logs dicom-viewer-backend
 
 3. **Try C-GET instead of C-MOVE:**
    ```bash
-   curl -X POST http://localhost:8042/modalities/AW_SERVER/query \
+   curl -X POST http://69.62.70.102:8042/modalities/AW_SERVER/query \
      -u orthanc:orthanc_secure_2024 \
      -H "Content-Type: application/json" \
      -d '{
@@ -746,7 +746,7 @@ pm2 logs dicom-viewer-backend
 ### Problem 4: Studies Retrieved but Not Showing in Viewer
 
 **Symptoms:**
-- Studies in Orthanc (http://localhost:8042)
+- Studies in Orthanc (http://69.62.70.102:8042)
 - Not appearing in your viewer
 
 **Solutions:**
@@ -812,7 +812,7 @@ pm2 logs dicom-viewer-backend
 3. **Retrieve series individually:**
    ```bash
    # Instead of whole study, retrieve one series at a time
-   curl -X POST http://localhost:8042/modalities/AW_SERVER/query \
+   curl -X POST http://69.62.70.102:8042/modalities/AW_SERVER/query \
      -u orthanc:orthanc_secure_2024 \
      -d '{"Level": "Series", "Query": {"StudyInstanceUID": "1.2.3..."}}'
    ```
@@ -873,7 +873,7 @@ echo "=== AW 4.6 Sync Monitor ==="
 echo ""
 
 # Check Orthanc studies count
-ORTHANC_COUNT=$(curl -s http://localhost:8042/statistics -u orthanc:orthanc_secure_2024 | jq '.CountStudies')
+ORTHANC_COUNT=$(curl -s http://69.62.70.102:8042/statistics -u orthanc:orthanc_secure_2024 | jq '.CountStudies')
 echo "📊 Orthanc Studies: $ORTHANC_COUNT"
 
 # Check MongoDB studies count
@@ -998,7 +998,7 @@ YOUR SYSTEM (ORTHANC):
 echoscu -aec AW_SERVER 192.168.1.100 104
 
 # Query studies
-curl -X POST http://localhost:8042/modalities/AW_SERVER/query \
+curl -X POST http://69.62.70.102:8042/modalities/AW_SERVER/query \
   -u orthanc:orthanc_secure_2024 \
   -H "Content-Type: application/json" \
   -d '{"Level":"Study","Query":{"PatientName":"*"}}'
@@ -1007,7 +1007,7 @@ curl -X POST http://localhost:8042/modalities/AW_SERVER/query \
 curl -X POST http://localhost:8001/api/orthanc/sync
 
 # Check Orthanc status
-curl http://localhost:8042/system -u orthanc:orthanc_secure_2024
+curl http://69.62.70.102:8042/system -u orthanc:orthanc_secure_2024
 
 # View studies
 http://localhost:5173
@@ -1134,7 +1134,7 @@ grep -i error /var/log/orthanc/orthanc.log
 1. **Check all services:**
    ```bash
    # Orthanc
-   curl http://localhost:8042/system -u orthanc:orthanc_secure_2024
+   curl http://69.62.70.102:8042/system -u orthanc:orthanc_secure_2024
    
    # Backend
    curl http://localhost:8001/api/health

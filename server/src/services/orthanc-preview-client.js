@@ -9,7 +9,7 @@ const { getMetricsCollector } = require('./metrics-collector');
 class OrthancPreviewClient {
   constructor(config = {}) {
     this.config = {
-      orthancUrl: config.orthancUrl || process.env.ORTHANC_URL || 'http://localhost:8042',
+      orthancUrl: config.orthancUrl || process.env.ORTHANC_URL || 'http://69.62.70.102:8042',
       orthancUsername: config.orthancUsername || process.env.ORTHANC_USERNAME || 'orthanc',
       orthancPassword: config.orthancPassword || process.env.ORTHANC_PASSWORD || 'orthanc',
       timeout: config.timeout || 30000,
@@ -106,7 +106,7 @@ class OrthancPreviewClient {
       }, timer);
 
       // Record successful preview generation
-      this.metricsCollector.recordInstanceProcessing('preview_generation', 'success');
+      this.metricsCollector.recordInstanceProcessed('preview_generation', 'success');
       timer.end({ status: 'success' });
 
       return pngBuffer;
@@ -127,7 +127,7 @@ class OrthancPreviewClient {
       }
 
       // Record failed preview generation for server errors
-      this.metricsCollector.recordInstanceProcessing('preview_generation', 'error');
+      this.metricsCollector.recordInstanceProcessed('preview_generation', 'error');
       timer.end({ status: 'error' });
 
       // Handle fallback if enabled (only for server errors)
@@ -237,7 +237,7 @@ class OrthancPreviewClient {
         // Don't retry on client errors (4xx) - throw immediately without fallback
         if (error.response && error.response.status >= 400 && error.response.status < 500) {
           // Record error and rethrow without fallback
-          this.metricsCollector.recordInstanceProcessing('preview_generation', 'error');
+          this.metricsCollector.recordInstanceProcessed('preview_generation', 'error');
           timer.end({ status: 'error' });
           throw error;
         }

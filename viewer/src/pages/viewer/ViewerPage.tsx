@@ -54,6 +54,7 @@ import { PatientContextPanel } from '../../components/worklist/PatientContextPan
 import AIAnalysisPanel from '../../components/ai/AIAnalysisPanel'
 import SimilarImagesPanel from '../../components/ai/SimilarImagesPanel'
 import ApiService from '../../services/ApiService'
+import { SeriesSelector } from '../../components/viewer/SeriesSelector'
 
 interface TabPanelProps {
   children?: React.ReactNode
@@ -532,50 +533,72 @@ const ViewerPage: React.FC = () => {
             <Box sx={{ flex: 1, position: 'relative' }}>
               <TabPanel value={activeTab} index={0}>
                 {studyData ? (
-                  viewerType === '3d' ? (
-                    <VolumeViewer3D
-                      studyInstanceUID={studyData.studyInstanceUID}
-                      frameUrls={Array.from(
-                        { length: studyData.series?.[0]?.numberOfInstances || 1 },
-                        (_, i) => `/api/dicom/studies/${studyData.studyInstanceUID}/frames/${i}`
+                  <Box sx={{ display: 'flex', height: '100%' }}>
+                    {/* Series Selector Sidebar */}
+                    {studyData.series && studyData.series.length > 1 && (
+                      <SeriesSelector
+                        series={studyData.series}
+                        selectedSeriesUID={selectedSeries?.seriesInstanceUID || studyData.series[0]?.seriesInstanceUID}
+                        onSeriesSelect={(seriesUID) => {
+                          const series = studyData.series.find((s: any) => s.seriesInstanceUID === seriesUID)
+                          if (series) {
+                            setSelectedSeries(series)
+                          }
+                        }}
+                      />
+                    )}
+
+                    {/* Viewer */}
+                    <Box sx={{ flex: 1, height: '100%' }}>
+                      {viewerType === '3d' ? (
+                        <VolumeViewer3D
+                          studyInstanceUID={studyData.studyInstanceUID}
+                          frameUrls={Array.from(
+                            { length: selectedSeries?.numberOfInstances || 1 },
+                            (_, i) => selectedSeries?.seriesInstanceUID 
+                              ? `/api/dicom/studies/${studyData.studyInstanceUID}/series/${selectedSeries.seriesInstanceUID}/frames/${i}`
+                              : `/api/dicom/studies/${studyData.studyInstanceUID}/frames/${i}`
+                          )}
+                          totalFrames={selectedSeries?.numberOfInstances || 1}
+                        />
+                      ) : viewerType === 'cornerstone3d' ? (
+                        <SmartModalityViewer
+                          instanceId={selectedSeries?.instances?.[0]?.orthancInstanceId || ''}
+                          metadata={{
+                            Modality: studyData.modality,
+                            NumberOfFrames: selectedSeries?.numberOfInstances,
+                            ...studyData
+                          }}
+                        >
+                          <Cornerstone3DViewer
+                            studyInstanceUID={studyData.studyInstanceUID}
+                            seriesInstanceUID={selectedSeries?.seriesInstanceUID}
+                            sopInstanceUIDs={selectedSeries?.instances?.map((instance: any) => instance.sopInstanceUID) || []}
+                            dicomWebBaseUrl="/api/dicom"
+                            mode="stack"
+                          />
+                        </SmartModalityViewer>
+                      ) : (
+                        <SmartModalityViewer
+                          instanceId={selectedSeries?.instances?.[0]?.orthancInstanceId || ''}
+                          metadata={{
+                            Modality: studyData.modality,
+                            NumberOfFrames: selectedSeries?.numberOfInstances,
+                            ...studyData
+                          }}
+                        >
+                          <MedicalImageViewer
+                            key={selectedSeries?.seriesInstanceUID}
+                            studyInstanceUID={studyData.studyInstanceUID}
+                            seriesInstanceUID={selectedSeries?.seriesInstanceUID || 'default-series'}
+                            sopInstanceUIDs={selectedSeries?.instances?.map((instance: any) => instance.sopInstanceUID) || []}
+                            isLoading={isLoading}
+                            error={error || undefined}
+                          />
+                        </SmartModalityViewer>
                       )}
-                      totalFrames={studyData.series?.[0]?.numberOfInstances || 1}
-                    />
-                  ) : viewerType === 'cornerstone3d' ? (
-                    <SmartModalityViewer
-                      instanceId={studyData.series?.[0]?.instances?.[0]?.orthancInstanceId || ''}
-                      metadata={{
-                        Modality: studyData.modality,
-                        NumberOfFrames: studyData.series?.[0]?.numberOfInstances,
-                        ...studyData
-                      }}
-                    >
-                      <Cornerstone3DViewer
-                        studyInstanceUID={studyData.studyInstanceUID}
-                        seriesInstanceUID={studyData.series?.[0]?.seriesInstanceUID}
-                        sopInstanceUIDs={studyData.series?.[0]?.instances?.map((instance: any) => instance.sopInstanceUID) || []}
-                        dicomWebBaseUrl="/api/dicom"
-                        mode="stack"
-                      />
-                    </SmartModalityViewer>
-                  ) : (
-                    <SmartModalityViewer
-                      instanceId={studyData.series?.[0]?.instances?.[0]?.orthancInstanceId || ''}
-                      metadata={{
-                        Modality: studyData.modality,
-                        NumberOfFrames: studyData.series?.[0]?.numberOfInstances,
-                        ...studyData
-                      }}
-                    >
-                      <MedicalImageViewer
-                        studyInstanceUID={studyData.studyInstanceUID}
-                        seriesInstanceUID={studyData.series?.[0]?.seriesInstanceUID || 'default-series'}
-                        sopInstanceUIDs={studyData.series?.[0]?.instances?.map((instance: any) => instance.sopInstanceUID) || []}
-                        isLoading={isLoading}
-                        error={error || undefined}
-                      />
-                    </SmartModalityViewer>
-                  )
+                    </Box>
+                  </Box>
                 ) : (
                   <Box sx={{ 
                     height: '100%', 

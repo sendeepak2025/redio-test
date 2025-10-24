@@ -2,7 +2,7 @@
  * Remote Orthanc Sync Script
  * 
  * Automatically syncs studies from remote Orthanc server to local database
- * Remote Server: http://localhost:8042
+ * Remote Server: http://69.62.70.102:8042
  * Username: orthanc
  * Password: orthanc_secure_2024
  */
@@ -15,7 +15,7 @@ const Instance = require('./src/models/Instance');
 
 // Remote Orthanc Configuration
 const REMOTE_ORTHANC = {
-  url: 'http://localhost:8042',
+  url: 'http://69.62.70.102:8042',
   username: 'orthanc',
   password: 'orthanc_secure_2024'
 };

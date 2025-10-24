@@ -12,7 +12,7 @@ const Instance = require('./src/models/Instance');
 const Patient = require('./src/models/Patient');
 
 const REMOTE_ORTHANC = {
-    url: 'http://localhost:8042',
+    url: 'http://69.62.70.102:8042',
     username: 'orthanc',
     password: 'orthanc_secure_2024'
 };
@@ -108,7 +108,7 @@ async function fetchAllInstanceIdsFromStudy(studyDetails) {
 }
 
 const DEFAULT_HOSPITAL_ID = '68f231e7301ed3979c14c5d4';
- // Default hospital ObjectId
+// Default hospital ObjectId
 
 async function saveStudyToDatabase(orthancStudyId) {
     try {
@@ -148,12 +148,59 @@ async function saveStudyToDatabase(orthancStudyId) {
         const studyDescription = firstInstanceTags.StudyDescription || '';
         const modality = firstInstanceTags.Modality || 'OT';
 
-        // Check if study already exists
+        // Check if study already exists - if yes, delete and re-create with new series data
         const existingStudy = await Study.findOne({ studyInstanceUID });
         if (existingStudy) {
-            console.log('⏭️ Study already exists in database');
-            return false;
+            console.log('🔄 Study exists, updating with new series data...');
+            // Delete old study and instances
+            await Study.deleteOne({ studyInstanceUID });
+            await Instance.deleteMany({ studyInstanceUID });
+            console.log('✅ Old data cleaned');
         }
+
+        // Fetch series details from Orthanc
+        const seriesData = [];
+        if (studyDetails.Series && studyDetails.Series.length > 0) {
+            for (const seriesId of studyDetails.Series) {
+                try {
+                    const seriesRes = await orthancClient.get(`/series/${seriesId}`);
+                    const seriesDetails = seriesRes.data;
+
+                    // Get first instance of series for metadata
+                    let seriesModality = modality;
+                    let seriesDescription = '';
+                    let seriesNumber = '';
+
+                    if (seriesDetails.Instances && seriesDetails.Instances.length > 0) {
+                        const firstSeriesInstance = await getInstanceMetadata(seriesDetails.Instances[0]);
+                        if (firstSeriesInstance) {
+                            seriesModality = firstSeriesInstance.Modality || modality;
+                            seriesDescription = firstSeriesInstance.SeriesDescription || '';
+                            seriesNumber = firstSeriesInstance.SeriesNumber || '';
+                        }
+                    }
+
+                    seriesData.push({
+                        orthancSeriesId: seriesId,
+                        seriesInstanceUID: seriesDetails.MainDicomTags?.SeriesInstanceUID || `${studyInstanceUID}.${seriesData.length + 1}`,
+                        seriesNumber: seriesNumber || seriesDetails.MainDicomTags?.SeriesNumber || (seriesData.length + 1).toString(),
+                        seriesDescription: seriesDescription || seriesDetails.MainDicomTags?.SeriesDescription || '',
+                        modality: seriesModality,
+                        numberOfInstances: seriesDetails.Instances?.length || 0,
+                        instances: seriesDetails.Instances || []
+                    });
+                } catch (err) {
+                    console.warn(`⚠️ Could not fetch series ${seriesId}:`, err.message);
+                }
+            }
+        }
+
+        console.log(`📊 Found ${seriesData.length} series in study`);
+
+        // Calculate total instances from all series
+        const totalInstances = seriesData.reduce((sum, series) => sum + (series.numberOfInstances || 0), 0);
+        
+        console.log(`📊 Total instances across all series: ${totalInstances}`);
 
         // Save study
         await Study.create({
@@ -166,48 +213,54 @@ async function saveStudyToDatabase(orthancStudyId) {
             patientSex: firstInstanceTags.PatientSex || '',
             modality,
             studyDescription,
-            numberOfSeries: studyDetails.Series?.length || 1,
-            numberOfInstances: instanceIds.length,
+            numberOfSeries: seriesData.length || 1,
+            numberOfInstances: totalInstances,
             orthancStudyId,
             remoteOrthancUrl: REMOTE_ORTHANC.url,
             hospitalId: DEFAULT_HOSPITAL_ID
         });
 
-        console.log(`✅ Study saved: ${studyInstanceUID}`);
+        console.log(`✅ Study saved: ${studyInstanceUID} with ${seriesData.length} series and ${totalInstances} instances`);
 
-        // Save instance records
+        // Save instance records with proper series mapping
         let instanceCount = 0;
-        for (const instanceId of instanceIds) {
-            const instTags = await getInstanceMetadata(instanceId);
-            if (!instTags) continue;
 
-            const frameCount = parseInt(instTags.NumberOfFrames) || 1;
-            const seriesInstanceUID = instTags.SeriesInstanceUID || `${studyInstanceUID}.1`;
-            const sopInstanceUID = instTags.SOPInstanceUID || instanceId;
+        // Process instances by series
+        for (const series of seriesData) {
+            for (const instanceId of series.instances) {
+                const instTags = await getInstanceMetadata(instanceId);
+                if (!instTags) continue;
 
-            const instanceRecords = [];
-            for (let frameIndex = 0; frameIndex < frameCount; frameIndex++) {
-                instanceRecords.push({
-                    studyInstanceUID,
-                    seriesInstanceUID,
-                    sopInstanceUID: frameCount > 1 ? `${sopInstanceUID}.frame${frameIndex}` : sopInstanceUID,
-                    instanceNumber: frameIndex + 1,
-                    modality,
-                    orthancInstanceId: instanceId,
-                    orthancUrl: `${REMOTE_ORTHANC.url}/instances/${instanceId}`,
-                    orthancFrameIndex: frameIndex,
-                    useOrthancPreview: true,
-                    remoteOrthancUrl: REMOTE_ORTHANC.url
+                const frameCount = parseInt(instTags.NumberOfFrames) || 1;
+                const seriesInstanceUID = instTags.SeriesInstanceUID || series.seriesInstanceUID;
+                const sopInstanceUID = instTags.SOPInstanceUID || instanceId;
+
+                const instanceRecords = [];
+                for (let frameIndex = 0; frameIndex < frameCount; frameIndex++) {
+                    instanceRecords.push({
+                        studyInstanceUID,
+                        seriesInstanceUID,
+                        sopInstanceUID: frameCount > 1 ? `${sopInstanceUID}.frame${frameIndex}` : sopInstanceUID,
+                        instanceNumber: frameIndex + 1,
+                        modality: instTags.Modality || series.modality,
+                        orthancInstanceId: instanceId,
+                        orthancStudyId: orthancStudyId,
+                        orthancSeriesId: series.orthancSeriesId,
+                        orthancUrl: `${REMOTE_ORTHANC.url}/instances/${instanceId}`,
+                        orthancFrameIndex: frameIndex,
+                        useOrthancPreview: true,
+                        remoteOrthancUrl: REMOTE_ORTHANC.url
+                    });
+                }
+
+                await Instance.insertMany(instanceRecords, { ordered: false }).catch(err => {
+                    if (err.code !== 11000) throw err;
                 });
+                instanceCount += frameCount;
             }
-
-            await Instance.insertMany(instanceRecords, { ordered: false }).catch(err => {
-                if (err.code !== 11000) throw err;
-            });
-            instanceCount += frameCount;
         }
 
-        console.log(`✅ Created ${instanceCount} instance records`);
+        console.log(`✅ Created ${instanceCount} instance records from ${seriesData.length} series`);
 
         // Upsert patient
         await Patient.updateOne(

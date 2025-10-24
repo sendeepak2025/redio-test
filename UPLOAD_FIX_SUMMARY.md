@@ -61,12 +61,12 @@ While fixing the main issue, I identified other hardcoded URLs in the codebase:
 - `/app/viewer/src/services/ApiService.ts` - Main service has proper env var handling
 
 ### Still Hardcoded (may need review):
-- `/app/viewer/src/pages/orthanc/OrthancViewerPage.tsx` - Direct Orthanc server URLs (http://localhost:8042)
+- `/app/viewer/src/pages/orthanc/OrthancViewerPage.tsx` - Direct Orthanc server URLs (http://69.62.70.102:8042)
 - `/app/viewer/src/services/ApiService.ts` - Orthanc preview/image URLs (lines 314, 321, 328)
 
 ## Backend Configuration
 Backend is properly configured with:
-- ORTHANC_URL=http://localhost:8042
+- ORTHANC_URL=http://69.62.70.102:8042
 - ORTHANC_USERNAME=orthanc
 - ORTHANC_PASSWORD=orthanc_secure_2024
 - MONGODB_URI configured and connected

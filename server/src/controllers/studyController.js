@@ -274,31 +274,124 @@ async function getStudyMetadata(req, res) {
     //   });
     // }
 
-    const inst = await Instance.findOne({ studyInstanceUID: studyUid }).lean();
-    let totalFrames = study.numberOfInstances || 1;
-    if (inst) totalFrames = await countFramesFromOrthanc(inst);
+    // Get series data from database instances
+    let seriesData = [];
+    let totalFrames = 0;
+    
+    try {
+      // Get all instances for this study grouped by series
+      const instances = await Instance.find({ studyInstanceUID: studyUid })
+        .sort({ seriesInstanceUID: 1, instanceNumber: 1 })
+        .lean();
+      
+      if (instances && instances.length > 0) {
+        // Group instances by series
+        const seriesMap = new Map();
+        
+        for (const inst of instances) {
+          const seriesUID = inst.seriesInstanceUID || `${studyUid}.1`;
+          
+          if (!seriesMap.has(seriesUID)) {
+            seriesMap.set(seriesUID, {
+              seriesInstanceUID: seriesUID,
+              seriesNumber: '',
+              seriesDescription: '',
+              modality: inst.modality || study.modality || 'OT',
+              numberOfInstances: 0,
+              instances: [],
+              orthancSeriesId: inst.orthancSeriesId
+            });
+          }
+          
+          const series = seriesMap.get(seriesUID);
+          series.numberOfInstances++;
+          series.instances.push({
+            sopInstanceUID: inst.sopInstanceUID,
+            instanceNumber: inst.instanceNumber,
+            orthancInstanceId: inst.orthancInstanceId
+          });
+        }
+        
+        // Convert map to array
+        seriesData = Array.from(seriesMap.values());
+        
+        // Try to get series metadata from Orthanc for descriptions
+        if (instances[0].orthancStudyId) {
+          try {
+            const orthancViewerService = require('../services/orthanc-viewer-service');
+            const orthancStudy = await orthancViewerService.getStudyComplete(instances[0].orthancStudyId);
+            
+            if (orthancStudy && orthancStudy.seriesDetails) {
+              // Match and update series descriptions
+              for (const series of seriesData) {
+                const orthancSeries = orthancStudy.seriesDetails.find(
+                  s => s.seriesInstanceUID === series.seriesInstanceUID || s.id === series.orthancSeriesId
+                );
+                if (orthancSeries) {
+                  series.seriesNumber = orthancSeries.seriesNumber || series.seriesNumber;
+                  series.seriesDescription = orthancSeries.seriesDescription || series.seriesDescription;
+                }
+              }
+            }
+          } catch (orthancError) {
+            console.warn('⚠️ Could not fetch series descriptions from Orthanc:', orthancError.message);
+          }
+        }
+        
+        // Set default series numbers if not set
+        seriesData.forEach((series, index) => {
+          if (!series.seriesNumber) {
+            series.seriesNumber = (index + 1).toString();
+          }
+          if (!series.seriesDescription) {
+            series.seriesDescription = `Series ${series.seriesNumber}`;
+          }
+        });
+        
+        // Calculate total frames
+        totalFrames = seriesData.reduce((sum, s) => sum + s.numberOfInstances, 0);
+        
+        console.log(`✅ Loaded ${seriesData.length} series with ${totalFrames} total instances for study ${studyUid}`);
+      }
+    } catch (dbError) {
+      console.error('❌ Error fetching series from database:', dbError.message);
+    }
 
-    const metadata = {
-      studyInstanceUID: studyUid,
-      patientName: study.patientName || 'Unknown',
-      modality: study.modality || 'OT',
-      numberOfSeries: study.numberOfSeries || 1,
-      numberOfInstances: totalFrames,
-      series: [
+    // Fallback to single series if no data found
+    if (seriesData.length === 0) {
+      totalFrames = study.numberOfInstances || 1;
+      seriesData = [
         {
           seriesInstanceUID: `${studyUid}.1`,
-          seriesNumber: 1,
+          seriesNumber: '1',
+          seriesDescription: study.studyDescription || 'Default Series',
+          modality: study.modality || 'OT',
+          numberOfInstances: totalFrames,
           instances: Array.from({ length: totalFrames }, (_, i) => ({
             sopInstanceUID: `${studyUid}.1.${i + 1}`,
             instanceNumber: i + 1
           }))
         }
-      ]
+      ];
+      console.log(`⚠️ Using fallback single series with ${totalFrames} instances`);
+    }
+
+    const metadata = {
+      studyInstanceUID: studyUid,
+      patientName: study.patientName || 'Unknown',
+      patientID: study.patientID || 'Unknown',
+      studyDate: study.studyDate || '',
+      studyTime: study.studyTime || '',
+      studyDescription: study.studyDescription || '',
+      modality: study.modality || 'OT',
+      numberOfSeries: seriesData.length,
+      numberOfInstances: totalFrames,
+      series: seriesData
     };
 
     res.json({ success: true, data: metadata });
   } catch (e) {
-    console.error(e);
+    console.error('❌ Error in getStudyMetadata:', e);
     res.status(500).json({ success: false, message: e.message });
   }
 }

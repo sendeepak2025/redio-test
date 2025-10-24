@@ -102,7 +102,7 @@ InstanceSchema.virtual('frameUrl').get(function() {
 // Virtual for Orthanc preview URL
 InstanceSchema.virtual('orthancPreviewUrl').get(function() {
   if (this.orthancInstanceId) {
-    return `${process.env.ORTHANC_URL || 'http://localhost:8042'}/instances/${this.orthancInstanceId}/preview`;
+    return `${process.env.ORTHANC_URL || 'http://69.62.70.102:8042'}/instances/${this.orthancInstanceId}/preview`;
   }
   return null;
 });

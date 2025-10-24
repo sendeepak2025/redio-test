@@ -18,7 +18,7 @@ async function testBufferUpload(filePath) {
   try {
     console.log('\nUploading to Orthanc...');
     const response = await axios.post(
-      'http://localhost:8042/instances',
+      'http://69.62.70.102:8042/instances',
       buffer,
       {
         auth: {

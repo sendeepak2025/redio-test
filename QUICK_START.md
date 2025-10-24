@@ -52,7 +52,7 @@ curl -X POST http://localhost:8001/api/dicom/upload \
 ### Method 3: Direct to Remote Orthanc
 ```bash
 curl -u orthanc:orthanc_secure_2024 \
-  -X POST http://localhost:8042/instances \
+  -X POST http://69.62.70.102:8042/instances \
   --data-binary @your-dicom-file.dcm
 ```
 
@@ -110,7 +110,7 @@ Expected output:
 # Upload a DICOM file via your app
 # Or directly to remote Orthanc:
 curl -u orthanc:orthanc_secure_2024 \
-  -X POST http://localhost:8042/instances \
+  -X POST http://69.62.70.102:8042/instances \
   --data-binary @test.dcm
 ```
 
@@ -134,7 +134,7 @@ You should see:
 
 ### Remote Orthanc Server
 ```
-URL: http://localhost:8042
+URL: http://69.62.70.102:8042
 Username: orthanc
 Password: orthanc_secure_2024
 ```

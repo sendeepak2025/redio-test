@@ -2,7 +2,7 @@ const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 const axios = require('axios');
 
-const ORTHANC_URL = process.env.ORTHANC_URL || 'http://localhost:8042';
+const ORTHANC_URL = process.env.ORTHANC_URL || 'http://69.62.70.102:8042';
 const ORTHANC_AUTH = {
   username: process.env.ORTHANC_USERNAME || 'orthanc',
   password: process.env.ORTHANC_PASSWORD || 'orthanc'

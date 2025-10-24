@@ -112,7 +112,7 @@ dcmdump input.dcm | grep TransferSyntax
 
 # Using Orthanc API
 curl -u orthanc:orthanc \
-  http://localhost:8042/instances/{instanceId}/tags?simplify=true | \
+  http://69.62.70.102:8042/instances/{instanceId}/tags?simplify=true | \
   jq '.TransferSyntaxUID'
 ```
 
@@ -120,10 +120,10 @@ curl -u orthanc:orthanc \
 
 ```bash
 # List installed plugins
-curl -u orthanc:orthanc http://localhost:8042/plugins
+curl -u orthanc:orthanc http://69.62.70.102:8042/plugins
 
 # Check system info
-curl -u orthanc:orthanc http://localhost:8042/system
+curl -u orthanc:orthanc http://69.62.70.102:8042/system
 ```
 
 ### Test Image Rendering
@@ -131,12 +131,12 @@ curl -u orthanc:orthanc http://localhost:8042/system
 ```bash
 # Try to get preview (will fail if codec missing)
 curl -u orthanc:orthanc \
-  http://localhost:8042/instances/{instanceId}/preview \
+  http://69.62.70.102:8042/instances/{instanceId}/preview \
   -o preview.png
 
 # Try to get raw frame data (should work even without codec)
 curl -u orthanc:orthanc \
-  http://localhost:8042/instances/{instanceId}/frames/0/raw \
+  http://69.62.70.102:8042/instances/{instanceId}/frames/0/raw \
   -o frame.raw
 ```
 

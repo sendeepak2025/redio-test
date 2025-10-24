@@ -67,7 +67,29 @@ router.get('/api/dicom/studies/:studyUid',
 router.get('/api/dicom/studies/:studyUid/metadata',  getStudyMetadata);
 
 // Frames - with migration support (Protected - requires authentication)
+// New endpoint: Series-specific frames
+router.get('/api/dicom/studies/:studyUid/series/:seriesUid/frames/:frameIndex', async (req, res) => {
+  console.log('🎯 SERIES-SPECIFIC ROUTE HIT:', {
+    studyUid: req.params.studyUid,
+    seriesUid: req.params.seriesUid,
+    frameIndex: req.params.frameIndex
+  });
+  
+  const migrationService = getDICOMMigrationService({
+    enableOrthancPreview: process.env.ENABLE_ORTHANC_PREVIEW !== 'false',
+    migrationPercentage: parseInt(process.env.ORTHANC_MIGRATION_PERCENTAGE) || 100
+  });
+  
+  return await migrationService.getFrameWithMigration(req, res, getFrame);
+});
+
+// Legacy endpoint: Study-level frames (for backward compatibility)
 router.get('/api/dicom/studies/:studyUid/frames/:frameIndex',  async (req, res) => {
+  console.log('⚠️ LEGACY ROUTE HIT (no series filter):', {
+    studyUid: req.params.studyUid,
+    frameIndex: req.params.frameIndex
+  });
+  
   const migrationService = getDICOMMigrationService({
     enableOrthancPreview: process.env.ENABLE_ORTHANC_PREVIEW !== 'false',
     migrationPercentage: parseInt(process.env.ORTHANC_MIGRATION_PERCENTAGE) || 100

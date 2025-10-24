@@ -34,13 +34,13 @@ router.get('/health', async (req, res) => {
     const orthancHealth = await orthancService.checkHealth();
     health.services.orthanc = {
       status: 'connected',
-      url: process.env.ORTHANC_URL || 'http://localhost:8042',
+      url: process.env.ORTHANC_URL || 'http://69.62.70.102:8042',
       ...orthancHealth
     };
   } catch (error) {
     health.services.orthanc = {
       status: 'error',
-      url: process.env.ORTHANC_URL || 'http://localhost:8042',
+      url: process.env.ORTHANC_URL || 'http://69.62.70.102:8042',
       error: error.message
     };
   }

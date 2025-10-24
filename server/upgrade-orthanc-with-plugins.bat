@@ -54,7 +54,7 @@ REM Step 6: Verify
 echo Step 6: Verifying installation...
 echo.
 echo Checking Orthanc:
-curl -s -u orthanc:orthanc http://localhost:8042/system
+curl -s -u orthanc:orthanc http://69.62.70.102:8042/system
 echo.
 
 echo ========================================
@@ -67,7 +67,7 @@ echo   - Config backup: orthanc-config-backup.json
 echo   - New features: GDCM, Web Viewer, DICOMweb
 echo.
 echo Access Orthanc:
-echo   - Web UI: http://localhost:8042
+echo   - Web UI: http://69.62.70.102:8042
 echo   - Username: orthanc
 echo   - Password: orthanc
 echo.

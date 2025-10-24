@@ -23,7 +23,7 @@ if [ "$EUID" -ne 0 ]; then
 fi
 
 # Configuration
-ORTHANC_URL="http://localhost:8042"
+ORTHANC_URL="http://69.62.70.102:8042"
 ORTHANC_USER="orthanc"
 ORTHANC_PASS="orthanc_secure_2024"
 

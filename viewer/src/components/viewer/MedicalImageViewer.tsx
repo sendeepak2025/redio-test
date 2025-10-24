@@ -289,7 +289,8 @@ export const MedicalImageViewer: React.FC<MedicalImageViewerProps> = ({
   const [viewerMode, setViewerMode] = useState<ViewerMode>(initialMode)
   const [is3DRenderingStarted, setIs3DRenderingStarted] = useState(false)
   const [currentFrameIndex, setCurrentFrameIndex] = useState(0)
-  const [totalFrames, setTotalFrames] = useState(1) // Will be set dynamically from study data
+  // Initialize totalFrames from sopInstanceUIDs if available
+  const [totalFrames, setTotalFrames] = useState(sopInstanceUIDs?.length || 1)
   const [activeTool, setActiveTool] = useState<Tool>('pan')
   const [isPlaying, setIsPlaying] = useState(false)
   const [playSpeed, setPlaySpeed] = useState(200) // ms between frames
@@ -434,10 +435,19 @@ export const MedicalImageViewer: React.FC<MedicalImageViewerProps> = ({
   const imageCache = useRef<Map<number, HTMLImageElement>>(new Map())
   const frameUrls = useMemo(() => {
     if (!currentStudyId || totalFrames <= 0) return []
+
+    console.log('═══════════════════════════════════════════════════════');
+    console.log('[SERIES IDENTIFIER] 🔄 Generating frame URLs');
+    console.log('[SERIES IDENTIFIER] Study UID:', currentStudyId);
+    console.log('[SERIES IDENTIFIER] Series UID:', seriesInstanceUID);
+    console.log('[SERIES IDENTIFIER] Total Frames:', totalFrames);
+    console.log('[SERIES IDENTIFIER] Sample URL:', ApiService.getFrameImageUrl(currentStudyId, 0, seriesInstanceUID));
+    console.log('═══════════════════════════════════════════════════════');
+
     return Array.from({ length: totalFrames }, (_, i) =>
-      ApiService.getFrameImageUrl(currentStudyId, i)
+      ApiService.getFrameImageUrl(currentStudyId, i, seriesInstanceUID)
     )
-  }, [totalFrames, currentStudyId])
+  }, [totalFrames, currentStudyId, seriesInstanceUID])
   // Real 3D Volume Renderer
   const volumeRenderer = useVolumeRenderer({
     frameUrls,
@@ -538,30 +548,19 @@ export const MedicalImageViewer: React.FC<MedicalImageViewerProps> = ({
     }
   }, [studyInstanceUID, currentStudyId, dispatch])
 
-  // Set initial frame count from study data
+  // Set frame count from sopInstanceUIDs prop (most reliable)
   useEffect(() => {
-    const setInitialFrameCount = async () => {
-      if (!currentStudyId) {
-        setTotalFrames(1)
-        return
-      }
-      try {
-        const studyResult = await ApiService.getStudyMetadata(currentStudyId)
-        if (studyResult?.success && studyResult.data) {
-          const frameCount = studyResult.data.numberOfInstances ?? 1
-          setTotalFrames(Math.max(1, frameCount))
-          console.log(`🎯 Initial frame count set to: ${Math.max(1, frameCount)} for study: ${currentStudyId}`)
-        } else {
-          setTotalFrames(1)
-        }
-      } catch (err) {
-        console.warn('Could not determine frame count, using default of 1:', err)
-        setTotalFrames(1)
-      }
+    if (sopInstanceUIDs && sopInstanceUIDs.length > 0) {
+      const frameCount = sopInstanceUIDs.length
+      setTotalFrames(frameCount)
+      console.log('═══════════════════════════════════════════════════════');
+      console.log('[SERIES IDENTIFIER] 🎯 Frame count set from sopInstanceUIDs');
+      console.log('[SERIES IDENTIFIER] Series UID:', seriesInstanceUID);
+      console.log('[SERIES IDENTIFIER] Frame Count:', frameCount);
+      console.log('═══════════════════════════════════════════════════════');
     }
-
-    setInitialFrameCount()
-  }, [currentStudyId])
+    // Note: We ONLY use sopInstanceUIDs, no API fallback to avoid race conditions
+  }, [sopInstanceUIDs, seriesInstanceUID])
 
   // Preload images for smooth navigation
   const preloadImages = useCallback((startIndex: number, count: number = 10) => {

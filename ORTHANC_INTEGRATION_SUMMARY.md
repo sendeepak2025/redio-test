@@ -4,7 +4,7 @@
 
 ### Remote Orthanc Server
 ```
-URL: http://localhost:8042
+URL: http://69.62.70.102:8042
 Username: orthanc
 Password: orthanc_secure_2024
 Status: ✅ Connected and Working
@@ -57,7 +57,7 @@ This starts:
 **Option B: Direct to Remote Orthanc**
 ```bash
 curl -u orthanc:orthanc_secure_2024 \
-  -X POST http://localhost:8042/instances \
+  -X POST http://69.62.70.102:8042/instances \
   --data-binary @file.dcm
 ```
 
@@ -234,7 +234,7 @@ ORTHANC_PASSWORD=your-password
 
 | Component | URL/Location |
 |-----------|-------------|
-| Remote Orthanc | http://localhost:8042 |
+| Remote Orthanc | http://69.62.70.102:8042 |
 | API Server | http://localhost:8001 |
 | Web Viewer | http://localhost:5173/viewer |
 | Upload UI | http://localhost:5173/upload |

@@ -95,7 +95,7 @@ EMAIL_FROM=noreply@medical-imaging.local
 EMAIL_TO=admin@medical-imaging.local
 
 # Orthanc
-ORTHANC_URL=http://localhost:8042
+ORTHANC_URL=http://69.62.70.102:8042
 ORTHANC_USERNAME=orthanc
 ORTHANC_PASSWORD=orthanc
 

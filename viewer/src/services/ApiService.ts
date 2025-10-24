@@ -93,10 +93,10 @@ export const getStudies = async () => {
 }
 
 /**
- * Get study metadata
+ * Get study metadata with series details
  */
 export const getStudyMetadata = async (studyUID: string) => {
-  const response = await apiCall(`/api/dicom/studies/${studyUID}`)
+  const response = await apiCall(`/api/dicom/studies/${studyUID}/metadata`)
   return response.json()
 }
 
@@ -200,7 +200,10 @@ export const getZipUploadInfo = async () => {
 /**
  * Get frame image URL
  */
-export const getFrameImageUrl = (studyUID: string, frameIndex: number): string => {
+export const getFrameImageUrl = (studyUID: string, frameIndex: number, seriesUID?: string): string => {
+  if (seriesUID) {
+    return `${BACKEND_URL}/api/dicom/studies/${studyUID}/series/${seriesUID}/frames/${frameIndex}`
+  }
   return `${BACKEND_URL}/api/dicom/studies/${studyUID}/frames/${frameIndex}`
 }
 
@@ -358,21 +361,21 @@ export const getOrthancStats = async () => {
  * Get Orthanc instance preview URL
  */
 export const getOrthancInstancePreviewUrl = (instanceId: string): string => {
-  return `http://localhost:8042/instances/${instanceId}/preview`
+  return `http://69.62.70.102:8042/instances/${instanceId}/preview`
 }
 
 /**
  * Get Orthanc instance image URL
  */
 export const getOrthancInstanceImageUrl = (instanceId: string): string => {
-  return `http://localhost:8042/instances/${instanceId}/image-uint8`
+  return `http://69.62.70.102:8042/instances/${instanceId}/image-uint8`
 }
 
 /**
  * Get Orthanc series preview URL
  */
 export const getOrthancSeriesPreviewUrl = (seriesId: string): string => {
-  return `http://localhost:8042/series/${seriesId}/preview`
+  return `http://69.62.70.102:8042/series/${seriesId}/preview`
 }
 
 /**

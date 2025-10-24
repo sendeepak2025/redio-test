@@ -207,7 +207,7 @@ Then try uploading a DICOM file. You should see:
 Make sure these are set in `server/.env`:
 
 ```env
-ORTHANC_URL=http://localhost:8042
+ORTHANC_URL=http://69.62.70.102:8042
 ORTHANC_USERNAME=orthanc
 ORTHANC_PASSWORD=orthanc_secure_2024
 ORTHANC_TIMEOUT=60000

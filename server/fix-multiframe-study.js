@@ -60,7 +60,7 @@ async function fixMultiFrameStudy(studyUID) {
     }
     
     // Get metadata from Orthanc to find frame count
-    const orthancUrl = process.env.ORTHANC_URL || 'http://localhost:8042';
+    const orthancUrl = process.env.ORTHANC_URL || 'http://69.62.70.102:8042';
     const orthancAuth = {
       username: process.env.ORTHANC_USERNAME || 'orthanc',
       password: process.env.ORTHANC_PASSWORD || 'orthanc'

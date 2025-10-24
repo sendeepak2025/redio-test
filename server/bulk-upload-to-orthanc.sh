@@ -4,7 +4,7 @@
 # This script finds all DICOM files and uploads them to Orthanc PACS
 #
 
-ORTHANC_URL="http://localhost:8042"
+ORTHANC_URL="http://69.62.70.102:8042"
 ORTHANC_USER="orthanc"
 ORTHANC_PASS="orthanc_secure_2024"
 DICOM_DIR="/app/server/backend/uploaded_studies"

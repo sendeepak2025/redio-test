@@ -156,7 +156,7 @@ sudo tee /opt/dicom-watcher/watch-and-send.sh > /dev/null << 'ENDOFSCRIPT'
 WATCH_DIR="/data/dicom/studies"
 
 # Cloud Orthanc server details (DO NOT CHANGE)
-ORTHANC_URL="http://localhost:8042"
+ORTHANC_URL="http://69.62.70.102:8042"
 ORTHANC_USER="orthanc"
 ORTHANC_PASS="orthanc_secure_2024"
 
@@ -412,7 +412,7 @@ sudo journalctl -u dicom-watcher -f
 ```
 🏥 DICOM File Watcher Started
 📁 Watching folder: /data/dicom/studies
-📡 Sending to: http://localhost:8042
+📡 Sending to: http://69.62.70.102:8042
 ✅ Cloud server is reachable
 👀 Now watching for new DICOM files...
 ```
@@ -590,7 +590,7 @@ sudo systemctl status dicom-watcher
 ls -lt /data/dicom/studies | head -10
 
 # Can we reach cloud server?
-curl -u orthanc:orthanc_secure_2024 http://localhost:8042/system
+curl -u orthanc:orthanc_secure_2024 http://69.62.70.102:8042/system
 
 # Check logs for errors
 sudo journalctl -u dicom-watcher -n 50
@@ -603,7 +603,7 @@ sudo systemctl restart dicom-watcher
 
 # Test manual send
 curl -u orthanc:orthanc_secure_2024 \
-  -X POST http://localhost:8042/instances \
+  -X POST http://69.62.70.102:8042/instances \
   --data-binary @/path/to/test.dcm
 ```
 
@@ -636,7 +636,7 @@ sudo systemctl restart dicom-watcher
 ping -c 4 69.62.70.102
 
 # Can we reach HTTP port?
-curl -v http://localhost:8042/system
+curl -v http://69.62.70.102:8042/system
 
 # Check firewall
 sudo firewall-cmd --list-all
@@ -748,7 +748,7 @@ CONFIGURATION FILES:
   Logs:    /var/log/dicom-watcher/
 
 CLOUD SERVER:
-  URL: http://localhost:8042
+  URL: http://69.62.70.102:8042
   User: orthanc
   Pass: orthanc_secure_2024
 

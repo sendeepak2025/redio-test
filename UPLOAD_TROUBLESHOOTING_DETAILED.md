@@ -66,7 +66,7 @@ curl https://www.rubomedical.com/dicom_files/example.dcm -o ~/Downloads/test.dcm
 
 # OR use one from Orthanc
 curl -u orthanc:orthanc_secure_2024 \
-  http://localhost:8042/instances/93816070-2dd6549b-90905ff2-5cbde0d2-8d8617c9/file \
+  http://69.62.70.102:8042/instances/93816070-2dd6549b-90905ff2-5cbde0d2-8d8617c9/file \
   -o ~/Downloads/test.dcm
 ```
 
@@ -221,7 +221,7 @@ Try this test upload:
 ```bash
 # 1. Download test file
 curl -u orthanc:orthanc_secure_2024 \
-  http://localhost:8042/instances/93816070-2dd6549b-90905ff2-5cbde0d2-8d8617c9/file \
+  http://69.62.70.102:8042/instances/93816070-2dd6549b-90905ff2-5cbde0d2-8d8617c9/file \
   -o ~/Downloads/test_orthanc.dcm
 
 # 2. Rename to ensure .dcm extension

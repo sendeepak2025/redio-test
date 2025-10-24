@@ -24,7 +24,7 @@ const server = spawn('node', ['src/index.js'], {
 setTimeout(() => {
   console.log('');
   console.log('2️⃣ Starting Remote Orthanc Sync Watcher...');
-  console.log('   📡 Remote: http://localhost:8042');
+  console.log('   📡 Remote: http://69.62.70.102:8042');
   console.log('   ⏱️  Checking every 60 seconds');
   console.log('');
   

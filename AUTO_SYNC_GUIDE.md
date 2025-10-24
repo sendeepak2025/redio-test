@@ -2,7 +2,7 @@
 
 ## Kya Hoga
 
-Jab bhi remote Orthanc (http://localhost:8042) pe koi study upload hogi:
+Jab bhi remote Orthanc (http://69.62.70.102:8042) pe koi study upload hogi:
 - ✅ Automatically database mein save ho jayegi
 - ✅ Patient ID hamesha "NA" hogi
 - ✅ Har 30 seconds mein check hoga
@@ -26,7 +26,7 @@ Bas itna hi! Script chalu ho jayegi aur background mein continuously check karti
 ### Initial Sync
 ```
 🔄 Starting initial sync...
-📡 Remote Orthanc: http://localhost:8042
+📡 Remote Orthanc: http://69.62.70.102:8042
 
 📊 Found 2 existing studies
 
@@ -106,7 +106,7 @@ patientID: 'NA'  // Hamesha yahi hoga
   modality: "CT",
   numberOfInstances: 10,
   orthancStudyId: "abc123",
-  remoteOrthancUrl: "http://localhost:8042"
+  remoteOrthancUrl: "http://69.62.70.102:8042"
 }
 ```
 
@@ -130,7 +130,7 @@ patientID: 'NA'  // Hamesha yahi hoga
   seriesInstanceUID: "1.2.3.4.5.6.7.8.9.1",
   sopInstanceUID: "1.2.3.4.5.6.7.8.9.1.1",
   orthancInstanceId: "abc123",
-  orthancUrl: "http://localhost:8042/instances/abc123",
+  orthancUrl: "http://69.62.70.102:8042/instances/abc123",
   useOrthancPreview: true
 }
 ```
@@ -211,7 +211,7 @@ npm run auto-sync
 ### 2. Upload Test Study to Remote Orthanc
 ```bash
 curl -u orthanc:orthanc_secure_2024 \
-  -X POST http://localhost:8042/instances \
+  -X POST http://69.62.70.102:8042/instances \
   --data-binary @test.dcm
 ```
 

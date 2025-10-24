@@ -59,19 +59,19 @@ To isolate the issue, try uploading a known valid DICOM file.
 ```bash
 # Get a test DICOM file
 curl -u orthanc:orthanc_secure_2024 \
-  http://localhost:8042/instances -o test.dcm
+  http://69.62.70.102:8042/instances -o test.dcm
 
 # Upload back to test
 curl -X POST \
   -H "Content-Type: application/dicom" \
   -u orthanc:orthanc_secure_2024 \
   --data-binary @test.dcm \
-  http://localhost:8042/instances
+  http://69.62.70.102:8042/instances
 ```
 
 ### Test 2: Check Orthanc Studies
 ```bash
-curl -u orthanc:orthanc_secure_2024 http://localhost:8042/studies
+curl -u orthanc:orthanc_secure_2024 http://69.62.70.102:8042/studies
 ```
 
 ### Test 3: Check Backend Logs
@@ -119,7 +119,7 @@ If file is very large:
 ## Current Configuration
 
 ### Orthanc
-- URL: http://localhost:8042
+- URL: http://69.62.70.102:8042
 - Username: orthanc
 - Password: orthanc_secure_2024
 - Version: mainline

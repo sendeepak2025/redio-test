@@ -18,7 +18,7 @@
 - [x] Backend running on port 8001
 - [x] Frontend running on port 3010
 - [x] MongoDB connected
-- [x] Orthanc connected (http://localhost:8042)
+- [x] Orthanc connected (http://69.62.70.102:8042)
 
 ## 🧪 Testing Steps
 
@@ -202,7 +202,7 @@ To verify backend is accepting files:
 ```bash
 # Get a test DICOM from Orthanc
 curl -u orthanc:orthanc_secure_2024 \
-  http://localhost:8042/instances/93816070-2dd6549b-90905ff2-5cbde0d2-8d8617c9/file \
+  http://69.62.70.102:8042/instances/93816070-2dd6549b-90905ff2-5cbde0d2-8d8617c9/file \
   -o /tmp/test.dcm
 
 # Check file size

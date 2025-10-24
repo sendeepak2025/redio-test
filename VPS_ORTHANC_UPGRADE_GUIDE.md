@@ -16,10 +16,10 @@
 ssh user@your-vps-ip
 
 # Check Orthanc version
-curl http://localhost:8042/system
+curl http://69.62.70.102:8042/system
 
 # Or if authentication is enabled
-curl -u username:password http://localhost:8042/system
+curl -u username:password http://69.62.70.102:8042/system
 ```
 
 ### 2. Backup Everything
@@ -238,20 +238,20 @@ sudo ss -tulpn | grep 8042
 
 ```bash
 # Test system endpoint
-curl http://localhost:8042/system
+curl http://69.62.70.102:8042/system
 
 # With authentication
-curl -u username:password http://localhost:8042/system
+curl -u username:password http://69.62.70.102:8042/system
 
 # Check version
-curl http://localhost:8042/system | grep Version
+curl http://69.62.70.102:8042/system | grep Version
 ```
 
 ### 3. Verify Plugins Loaded
 
 ```bash
 # Check plugins endpoint
-curl http://localhost:8042/plugins
+curl http://69.62.70.102:8042/plugins
 
 # Should return list of loaded plugins:
 # - "dicom-web"
@@ -263,12 +263,12 @@ curl http://localhost:8042/plugins
 
 ```bash
 # Test with a sample DICOM file
-curl -X POST http://localhost:8042/instances \
+curl -X POST http://69.62.70.102:8042/instances \
   -H "Content-Type: application/dicom" \
   --data-binary @sample.dcm
 
 # Or with authentication
-curl -X POST http://localhost:8042/instances \
+curl -X POST http://69.62.70.102:8042/instances \
   -u username:password \
   -H "Content-Type: application/dicom" \
   --data-binary @sample.dcm
@@ -279,7 +279,7 @@ curl -X POST http://localhost:8042/instances \
 ```bash
 # Test from your Node.js server
 # Update .env if needed
-ORTHANC_URL=http://localhost:8042
+ORTHANC_URL=http://69.62.70.102:8042
 ORTHANC_USERNAME=your-username
 ORTHANC_PASSWORD=your-password
 
@@ -456,7 +456,7 @@ sleep 5
 echo "Verifying upgrade..."
 if sudo systemctl is-active --quiet orthanc; then
     echo "✅ Orthanc is running"
-    curl -s http://localhost:8042/system | grep -o '"Version"[^,]*'
+    curl -s http://69.62.70.102:8042/system | grep -o '"Version"[^,]*'
     echo "✅ Upgrade completed successfully!"
 else
     echo "❌ Orthanc failed to start"

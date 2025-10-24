@@ -47,7 +47,7 @@ describe('HealthChecker', () => {
     test('should initialize with default configuration', () => {
       const defaultChecker = new HealthChecker();
       
-      expect(defaultChecker.config.orthancUrl).toBe('http://localhost:8042');
+      expect(defaultChecker.config.orthancUrl).toBe('http://69.62.70.102:8042');
       expect(defaultChecker.config.checkInterval).toBe(30000);
       expect(defaultChecker.config.timeout).toBe(5000);
       expect(defaultChecker.healthStatus.overall).toBe('unknown');

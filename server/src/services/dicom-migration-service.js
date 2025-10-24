@@ -52,8 +52,15 @@ class DICOMMigrationService {
    * @param {Function} nodeFallback - Node.js DICOM decoding fallback function
    */
   async getFrameWithMigration(req, res, nodeFallback) {
-    const { studyUid, frameIndex } = req.params;
-    const context = { studyUid, frameIndex };
+    const { studyUid, seriesUid, frameIndex } = req.params;
+    const context = { studyUid, seriesUid, frameIndex };
+
+    console.log('═══════════════════════════════════════════════════════');
+    console.log('[MIGRATION SERVICE] Frame request received');
+    console.log('[MIGRATION SERVICE] Study UID:', studyUid);
+    console.log('[MIGRATION SERVICE] Series UID:', seriesUid || 'NOT PROVIDED');
+    console.log('[MIGRATION SERVICE] Frame Index:', frameIndex);
+    console.log('═══════════════════════════════════════════════════════');
 
     // Determine which method to use
     const useOrthanc = this.shouldUseOrthancPreview(context);
@@ -81,11 +88,19 @@ class DICOMMigrationService {
     const timer = this.metricsCollector.startTimer('orthanc_preview_migration');
 
     try {
-      const { studyUid, frameIndex } = req.params;
+      const { studyUid, seriesUid, frameIndex } = req.params;
       const gIndex = Math.max(0, parseInt(frameIndex, 10) || 0);
 
-      // Find instances for study
-      const instances = await Instance.find({ studyInstanceUID: studyUid }).lean();
+      // Find instances - filter by series if provided
+      const query = { studyInstanceUID: studyUid };
+      if (seriesUid) {
+        query.seriesInstanceUID = seriesUid;
+        console.log(`🎯 Migration Service: Filtering by series ${seriesUid}`);
+      } else {
+        console.log(`⚠️ Migration Service: NO series filter - will return all study instances`);
+      }
+      const instances = await Instance.find(query).lean();
+      console.log(`📊 Migration Service: Found ${instances.length} instances`);
       if (!instances || instances.length === 0) {
         timer.end({ status: 'not_found' });
         throw new Error('No instances found for study');

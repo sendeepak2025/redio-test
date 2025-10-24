@@ -772,7 +772,7 @@ class DisasterRecovery {
   async validateOrthancFunctionality() {
     try {
       // Test Orthanc API endpoint
-      const response = await fetch('http://localhost:8042/system');
+      const response = await fetch('http://69.62.70.102:8042/system');
       if (response.ok) {
         return { valid: true };
       } else {
@@ -800,7 +800,7 @@ class DisasterRecovery {
 
   async checkOrthancConnectivity() {
     try {
-      const response = await fetch('http://localhost:8042/system', { timeout: 5000 });
+      const response = await fetch('http://69.62.70.102:8042/system', { timeout: 5000 });
       return response.ok;
     } catch (error) {
       return false;

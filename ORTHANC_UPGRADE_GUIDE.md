@@ -46,7 +46,7 @@ chmod +x upgrade-orthanc-with-plugins.sh
 
 ## After Upgrade:
 
-1. **Check Orthanc**: http://localhost:8042
+1. **Check Orthanc**: http://69.62.70.102:8042
 2. **Login**: orthanc / orthanc
 3. **Verify**: Your old studies are still there
 4. **Upload**: Try the echocardiogram - it will work!
@@ -71,7 +71,7 @@ docker restart orthanc
 
 After upgrade, verify:
 
-- [ ] Orthanc web UI loads (http://localhost:8042)
+- [ ] Orthanc web UI loads (http://69.62.70.102:8042)
 - [ ] Can login with orthanc/orthanc
 - [ ] Old studies are visible
 - [ ] Can upload new studies

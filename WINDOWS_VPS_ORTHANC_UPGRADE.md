@@ -86,7 +86,7 @@ Once connected to your VPS:
    Orthanc.exe --version
    ```
 4. **Or** open browser on VPS:
-   - Go to: `http://localhost:8042`
+   - Go to: `http://69.62.70.102:8042`
    - Login (if required)
    - Check version in the interface
 
@@ -119,7 +119,7 @@ Once connected to your VPS:
    - Right-click → End Task
 
 3. **Verify it's stopped**:
-   - Open browser: `http://localhost:8042`
+   - Open browser: `http://69.62.70.102:8042`
    - Should show "Can't reach this page"
 
 ---
@@ -289,7 +289,7 @@ Orthanc.exe Configuration.json
 ### Test 1: Check Version
 
 1. **Open browser** on VPS
-2. Go to: `http://localhost:8042`
+2. Go to: `http://69.62.70.102:8042`
 3. Login with your credentials
 4. Check version number in interface
 
@@ -298,15 +298,15 @@ Orthanc.exe Configuration.json
 1. **Open Command Prompt**
 2. Run:
    ```cmd
-   curl http://localhost:8042/system
+   curl http://69.62.70.102:8042/system
    ```
 3. Should show system info with new version
 
 ### Test 3: Check Plugins
 
-1. In browser, go to: `http://localhost:8042/app/explorer.html`
+1. In browser, go to: `http://69.62.70.102:8042/app/explorer.html`
 2. Check if DICOMweb and Web Viewer are available
-3. Or check: `http://localhost:8042/plugins`
+3. Or check: `http://69.62.70.102:8042/plugins`
 
 ### Test 4: Upload Test DICOM
 
@@ -502,7 +502,7 @@ echo.
 
 :: Verify
 echo Verifying upgrade...
-curl http://localhost:8042/system
+curl http://69.62.70.102:8042/system
 echo.
 
 echo ========================================
@@ -517,7 +517,7 @@ pause
 ## Post-Upgrade Checklist
 
 - [ ] Orthanc starts without errors
-- [ ] Can access web interface at `http://localhost:8042`
+- [ ] Can access web interface at `http://69.62.70.102:8042`
 - [ ] Can login with credentials
 - [ ] Plugins are loaded (check `/plugins` endpoint)
 - [ ] Can upload DICOM files

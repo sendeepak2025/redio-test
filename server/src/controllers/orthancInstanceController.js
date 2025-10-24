@@ -20,13 +20,31 @@ class OrthancInstanceController {
     const timer = this.metricsCollector.startTimer('frame_retrieval_orthanc');
     
     try {
-      const { studyUid, frameIndex } = req.params;
+      const { studyUid, seriesUid, frameIndex } = req.params;
       const gIndex = Math.max(0, parseInt(frameIndex, 10) || 0);
 
-      // 1) Find all instances for study
-      const instances = await Instance.find({ studyInstanceUID: studyUid }).lean();
+      // 1) Find instances - filter by series if seriesUid provided
+      const query = { studyInstanceUID: studyUid };
+      
+      console.log('═══════════════════════════════════════════════════════');
+      console.log('[SERIES IDENTIFIER - BACKEND] Frame request received');
+      console.log('[SERIES IDENTIFIER - BACKEND] Study UID:', studyUid);
+      console.log('[SERIES IDENTIFIER - BACKEND] Series UID:', seriesUid || 'NOT PROVIDED');
+      console.log('[SERIES IDENTIFIER - BACKEND] Frame Index:', gIndex);
+      
+      if (seriesUid) {
+        query.seriesInstanceUID = seriesUid;
+        console.log('[SERIES IDENTIFIER - BACKEND] ✅ Filtering by series');
+      } else {
+        console.log('[SERIES IDENTIFIER - BACKEND] ⚠️ NO series filter - returning all study instances');
+      }
+      
+      const instances = await Instance.find(query).lean();
+      console.log('[SERIES IDENTIFIER - BACKEND] Found instances:', instances.length);
+      console.log('═══════════════════════════════════════════════════════');
+      
       if (!instances || instances.length === 0) {
-        console.warn('getFrame: no instances found for study', studyUid);
+        console.warn('❌ getFrame: no instances found for study', studyUid, seriesUid ? `series ${seriesUid}` : '');
         timer.end({ status: 'not_found' });
         return this.sendPlaceholderPng(res);
       }

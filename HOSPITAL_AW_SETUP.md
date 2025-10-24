@@ -84,7 +84,7 @@ Create `/opt/dicom-watcher/watch-and-send.sh`:
 
 # Configuration
 WATCH_DIR="/data/dicom/studies"
-ORTHANC_URL="http://localhost:8042"
+ORTHANC_URL="http://69.62.70.102:8042"
 ORTHANC_USER="orthanc"
 ORTHANC_PASS="orthanc_secure_2024"
 PROCESSED_LOG="/var/log/dicom-watcher/processed.log"
@@ -186,7 +186,7 @@ Create `/opt/dicom-sync/sync-to-orthanc.sh`:
 
 # Configuration
 DICOM_DIR="/data/dicom/studies"
-ORTHANC_URL="http://localhost:8042"
+ORTHANC_URL="http://69.62.70.102:8042"
 ORTHANC_USER="orthanc"
 ORTHANC_PASS="orthanc_secure_2024"
 PROCESSED_LIST="/var/log/dicom-sync/processed.txt"
@@ -284,7 +284,7 @@ Edit `orthanc-config/orthanc.json`:
 ```bash
 # Query for studies from today
 curl -u orthanc:orthanc_secure_2024 \
-  -X POST http://localhost:8042/modalities/AW_SERVER/query \
+  -X POST http://69.62.70.102:8042/modalities/AW_SERVER/query \
   -d '{
     "Level": "Study",
     "Query": {
@@ -294,7 +294,7 @@ curl -u orthanc:orthanc_secure_2024 \
 
 # Retrieve specific study
 curl -u orthanc:orthanc_secure_2024 \
-  -X POST http://localhost:8042/modalities/AW_SERVER/move \
+  -X POST http://69.62.70.102:8042/modalities/AW_SERVER/move \
   -d '{
     "Level": "Study",
     "Resources": ["1.2.3.4.5.6.7.8.9"]
@@ -308,7 +308,7 @@ Create `/opt/orthanc-pull/pull-from-aw.sh`:
 ```bash
 #!/bin/bash
 
-ORTHANC_URL="http://localhost:8042"
+ORTHANC_URL="http://69.62.70.102:8042"
 ORTHANC_USER="orthanc"
 ORTHANC_PASS="orthanc_secure_2024"
 MODALITY="AW_SERVER"
@@ -353,7 +353,7 @@ mkdir -p /opt/dicom-watcher
 cat > /opt/dicom-watcher/watch-and-send.sh << 'EOF'
 #!/bin/bash
 WATCH_DIR="/data/dicom/studies"
-ORTHANC_URL="http://localhost:8042"
+ORTHANC_URL="http://69.62.70.102:8042"
 ORTHANC_USER="orthanc"
 ORTHANC_PASS="orthanc_secure_2024"
 
@@ -432,7 +432,7 @@ journalctl -u dicom-watcher -f
 ```bash
 # Check if study received
 curl -u orthanc:orthanc_secure_2024 \
-  http://localhost:8042/studies
+  http://69.62.70.102:8042/studies
 ```
 
 ### Test 4: Check Your Database
@@ -497,7 +497,7 @@ journalctl -u dicom-watcher -n 50
 
 # Test manual send
 curl -u orthanc:orthanc_secure_2024 \
-  -X POST http://localhost:8042/instances \
+  -X POST http://69.62.70.102:8042/instances \
   --data-binary @/path/to/test.dcm
 ```
 
@@ -508,7 +508,7 @@ curl -u orthanc:orthanc_secure_2024 \
 ping 69.62.70.102
 
 # Test Orthanc HTTP
-curl -u orthanc:orthanc_secure_2024 http://localhost:8042/system
+curl -u orthanc:orthanc_secure_2024 http://69.62.70.102:8042/system
 
 # Test DICOM port
 telnet 69.62.70.102 4242
