@@ -86,7 +86,7 @@ class AutoAnalysisService {
       console.log(`📊 [DIRECT] Calling MedSigLIP (port 5001)...`);
       let classificationResult = null;
       let findings: any[] = [];
-      
+
       try {
         const classifyResponse = await fetch('http://localhost:5001/classify', {
           method: 'POST',
@@ -94,6 +94,7 @@ class AutoAnalysisService {
           body: JSON.stringify({
             image: imageData.base64,
             modality: imageData.modality || 'OT',
+            slice_index: sliceIndex,  // Send slice index separately
             return_annotations: true  // Request annotations/findings
           })
         });
@@ -117,7 +118,7 @@ class AutoAnalysisService {
       // Step 3: DIRECT call to MedGemma (port 5002) for report
       console.log(`📝 [DIRECT] Calling MedGemma (port 5002)...`);
       let reportResult = null;
-      
+
       try {
         const reportResponse = await fetch('http://localhost:5002/generate-report', {
           method: 'POST',
@@ -126,7 +127,8 @@ class AutoAnalysisService {
             image: imageData.base64,
             modality: imageData.modality || 'OT',
             patientContext: imageData.patientContext || {},
-            classification: classificationResult?.classification  // Pass classification to report
+            classification: classificationResult?.classification,  // Pass classification to report
+            slice_index: sliceIndex  // Send slice index separately
           })
         });
 
@@ -146,13 +148,13 @@ class AutoAnalysisService {
 
       // Step 4: Combine results with findings/annotations
       const analysisId = `AI-${Date.now()}-${Math.random().toString(36).substring(7).toUpperCase()}`;
-      
+
       const combinedResults = {
         analysisId,
         studyInstanceUID,
         sliceIndex,
         analyzedAt: new Date().toISOString(),
-        
+
         // Classification from MedSigLIP
         classification: {
           label: classificationResult.classification,
@@ -160,7 +162,7 @@ class AutoAnalysisService {
           topPredictions: classificationResult.top_predictions || [],
           model: 'MedSigLIP'
         },
-        
+
         // Findings/Annotations from MedSigLIP
         findings: findings.map((f: any) => ({
           type: f.type || f.label || 'Finding',
@@ -169,7 +171,7 @@ class AutoAnalysisService {
           description: f.description || f.text || '',
           severity: f.severity || 'medium'
         })),
-        
+
         // Report from MedGemma
         report: {
           findings: reportResult.findings,
@@ -177,12 +179,12 @@ class AutoAnalysisService {
           recommendations: reportResult.recommendations || [],
           model: 'MedGemma'
         },
-        
+
         // Metadata
         modality: imageData.modality,
         patientContext: imageData.patientContext,
         imageSnapshot: imageData.base64,
-        
+
         // Status
         status: 'complete',
         servicesUsed: ['MedSigLIP', 'MedGemma']
@@ -194,7 +196,7 @@ class AutoAnalysisService {
       analysis.analysisId = analysisId;
       analysis.results = combinedResults;
       analysis.completedAt = new Date();
-      
+
       console.log(`✅ [DIRECT] Analysis complete: ${analysisId}`);
       console.log(`   Classification: ${combinedResults.classification.label}`);
       console.log(`   Findings: ${combinedResults.findings.length}`);
@@ -227,29 +229,41 @@ class AutoAnalysisService {
       throw new Error('Canvas not found');
     }
 
-    // Convert canvas to base64
+    // Get base64 image data
     const base64 = canvas.toDataURL('image/png').split(',')[1];
 
-    // Get study metadata
-    let modality = 'OT';
-    let patientContext = {};
+    // Default metadata (since API might fail)
+    let modality = 'XA'; // Default to XA for angiography
+    let patientContext = {
+      age: 'Unknown',
+      sex: 'Unknown',
+      clinicalHistory: `Slice ${sliceIndex} analysis`
+    };
 
+    // Try to get study metadata (but don't fail if it doesn't work)
     try {
       const studyResponse = await fetch(`/api/studies/${studyInstanceUID}`);
       if (studyResponse.ok) {
         const studyData = await studyResponse.json();
-        modality = studyData.modality || 'OT';
+        modality = studyData.modality || modality;
         patientContext = {
-          age: studyData.patientAge,
-          sex: studyData.patientSex,
-          clinicalHistory: studyData.studyDescription
+          age: studyData.patientAge || patientContext.age,
+          sex: studyData.patientSex || patientContext.sex,
+          clinicalHistory: studyData.studyDescription || patientContext.clinicalHistory
         };
+        console.log(`✅ Got study metadata: ${modality}`);
+      } else {
+        console.warn(`⚠️ Study API returned ${studyResponse.status}, using defaults`);
       }
     } catch (error) {
-      console.warn('Could not fetch study metadata:', error);
+      console.warn('⚠️ Could not fetch study metadata, using defaults:', error);
     }
 
-    return { base64, modality, patientContext };
+    return {
+      base64,
+      modality,
+      patientContext
+    };
   }
 
 
@@ -270,11 +284,11 @@ class AutoAnalysisService {
 
     for (let i = 0; i < slices.length; i += batchSize) {
       const batch = slices.slice(i, i + batchSize);
-      
+
       console.log(`🔄 Processing batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(slices.length / batchSize)}`);
-      
+
       await Promise.all(
-        batch.map(sliceIndex => 
+        batch.map(sliceIndex =>
           this.analyzeSingleSlice(studyInstanceUID, seriesInstanceUID, sliceIndex)
         )
       );
@@ -295,7 +309,7 @@ class AutoAnalysisService {
     sliceIndex: number
   ): Promise<void> {
     console.log(`🔄 Retrying analysis for slice ${sliceIndex}`);
-    
+
     const analysis = this.analyses.get(sliceIndex);
     if (analysis) {
       analysis.status = 'pending';
@@ -327,7 +341,7 @@ class AutoAnalysisService {
     console.log(`📊 Found ${completedAnalyses.length} completed analyses`);
 
     const reportId = `CONSOLIDATED-${Date.now()}`;
-    
+
     return {
       reportId,
       slices,
@@ -350,19 +364,19 @@ class AutoAnalysisService {
 
     try {
       const results = analysis.results;
-      
+
       // Generate PDF content as HTML
       const pdfContent = this.generatePDFHTML(results, sliceIndex);
-      
+
       // Create a new window for printing
       const printWindow = window.open('', '_blank');
       if (!printWindow) {
         throw new Error('Popup blocked. Please allow popups for this site.');
       }
-      
+
       printWindow.document.write(pdfContent);
       printWindow.document.close();
-      
+
       // Wait for content to load then print
       printWindow.onload = () => {
         setTimeout(() => {
@@ -382,7 +396,7 @@ class AutoAnalysisService {
    */
   private generatePDFHTML(results: any, sliceIndex: number): string {
     const date = new Date().toLocaleString();
-    
+
     return `
 <!DOCTYPE html>
 <html>
@@ -494,9 +508,9 @@ class AutoAnalysisService {
       ${results.classification.topPredictions && results.classification.topPredictions.length > 0 ? `
         <p><strong>Top Predictions:</strong></p>
         <ul>
-          ${results.classification.topPredictions.map((p: any) => 
-            `<li>${p.label || p.class}: ${((p.confidence || p.score) * 100).toFixed(1)}%</li>`
-          ).join('')}
+          ${results.classification.topPredictions.map((p: any) =>
+      `<li>${p.label || p.class}: ${((p.confidence || p.score) * 100).toFixed(1)}%</li>`
+    ).join('')}
         </ul>
       ` : ''}
     </div>
@@ -589,16 +603,16 @@ class AutoAnalysisService {
 
       // Generate consolidated PDF HTML
       const pdfContent = this.generateConsolidatedPDFHTML(report);
-      
+
       // Create a new window for printing
       const printWindow = window.open('', '_blank');
       if (!printWindow) {
         throw new Error('Popup blocked. Please allow popups for this site.');
       }
-      
+
       printWindow.document.write(pdfContent);
       printWindow.document.close();
-      
+
       // Wait for content to load then print
       printWindow.onload = () => {
         setTimeout(() => {
@@ -619,11 +633,11 @@ class AutoAnalysisService {
   private generateConsolidatedPDFHTML(report: ConsolidatedReport): string {
     const date = new Date().toLocaleString();
     const allResults = report.reportData || [];
-    
+
     // Calculate summary statistics
     const totalFindings = allResults.reduce((sum, r) => sum + (r.findings?.length || 0), 0);
     const avgConfidence = allResults.reduce((sum, r) => sum + (r.classification?.confidence || 0), 0) / allResults.length;
-    
+
     return `
 <!DOCTYPE html>
 <html>
@@ -863,7 +877,7 @@ class AutoAnalysisService {
     message: string;
   }> {
     console.log('🏥 [DIRECT] Checking AI services health...');
-    
+
     const health = {
       backend: true, // Not used anymore
       aiServices: {
@@ -936,7 +950,7 @@ class AutoAnalysisService {
     seriesInstanceUID: string | undefined
   ): Promise<void> {
     const failedSlices = this.getFailedAnalyses();
-    
+
     if (failedSlices.length === 0) {
       console.log('No failed analyses to retry');
       return;

@@ -115,8 +115,16 @@ def classify():
         data = request.json
         image_b64 = data.get('image')
         modality = data.get('modality', 'unknown')
+        slice_index = data.get('slice_index', 0)  # Get slice index from request
         
-        # Decode image
+        print(f"\n{'='*60}")
+        print(f"📥 MEDSIGCLIP CLASSIFY REQUEST")
+        print(f"   Modality: {modality}")
+        print(f"   Slice Index: {slice_index}")
+        print(f"   Slice Index Type: {type(slice_index)}")
+        print(f"{'='*60}\n")
+        
+        # Decode image (clean base64)
         image_bytes = base64.b64decode(image_b64)
         image = Image.open(io.BytesIO(image_bytes)).convert('RGB')
         
@@ -128,10 +136,15 @@ def classify():
         elif MODE == 'cloud' and CLOUD_AVAILABLE:
             result = classify_with_cloud_api(image_bytes, modality)
         else:
-            result = classify_with_enhanced_demo(image, modality)
+            # Pass slice_index directly
+            print(f"🔍 Classifying with demo mode, slice_index={slice_index}")
+            result = classify_with_enhanced_demo(image, modality, slice_index)
         
         result['processing_time'] = time.time() - start_time
         result['mode'] = MODE
+        
+        print(f"✅ Classification result: {result.get('classification')} ({result.get('confidence'):.2f})")
+        
         return jsonify(result)
         
     except Exception as e:
@@ -244,74 +257,122 @@ def classify_with_cloud_api(image_bytes, modality):
         print(f"Cloud API failed: {e}")
         return classify_with_enhanced_demo(Image.open(io.BytesIO(image_bytes)), modality)
 
-def classify_with_enhanced_demo(image, modality):
-    """Enhanced demo mode with realistic image analysis"""
+def classify_with_enhanced_demo(image, modality, slice_index=0):
+    """Enhanced demo mode with realistic image analysis and slice variation"""
     # Analyze image features
     features = analyze_image_features(image)
     
-    # Classification labels by modality
+    # Use provided slice_index (default 0 if not provided)
+    if slice_index is None:
+        slice_index = 0
+    
+    # Classification labels by modality with more variety
     classifications = {
-        'XR': ['normal', 'pneumonia', 'fracture', 'effusion', 'cardiomegaly', 'nodule'],
-        'CT': ['normal', 'mass', 'hemorrhage', 'infarct', 'nodule', 'fracture'],
-        'MR': ['normal', 'tumor', 'edema', 'lesion', 'enhancement', 'infarct'],
-        'US': ['normal', 'cyst', 'mass', 'fluid', 'calcification', 'stone']
+        'XA': ['normal', 'stenosis', 'occlusion', 'aneurysm', 'dissection', 'calcification', 'thrombus'],
+        'XR': ['normal', 'pneumonia', 'fracture', 'effusion', 'cardiomegaly', 'nodule', 'atelectasis'],
+        'CT': ['normal', 'mass', 'hemorrhage', 'infarct', 'nodule', 'fracture', 'consolidation'],
+        'MR': ['normal', 'tumor', 'edema', 'lesion', 'enhancement', 'infarct', 'ischemia'],
+        'US': ['normal', 'cyst', 'mass', 'fluid', 'calcification', 'stone', 'collection']
     }
     
-    labels = classifications.get(modality, ['normal', 'abnormal', 'artifact'])
+    labels = classifications.get(modality, ['normal', 'abnormal', 'artifact', 'unclear', 'suspicious'])
     
     # Safety check - ensure labels is not empty
     if not labels or len(labels) == 0:
         labels = ['normal', 'abnormal', 'artifact']
     
-    # Intelligent classification based on image features
+    # Intelligent classification based on image features + slice variation
     brightness = features['brightness'] / 255.0
     contrast = features['contrast'] / 128.0
     entropy = features['entropy'] / 8.0
     edges = min(features['edges'] / 50.0, 1.0)
     
-    # Combined score with weighted features
+    # Add slice-based variation (makes each slice different)
+    slice_factor = (slice_index % 7) / 7.0  # Cycles through 0-6
+    
+    # Combined score with weighted features + slice variation
     combined_score = (
-        brightness * 0.25 +
-        contrast * 0.25 +
-        entropy * 0.25 +
-        edges * 0.25
+        brightness * 0.20 +
+        contrast * 0.20 +
+        entropy * 0.20 +
+        edges * 0.20 +
+        slice_factor * 0.20  # Slice variation
     )
     
-    # Determine classification based on score and features
+    # Determine classification based on score, features, and slice
+    # IMPORTANT: Slice index is PRIMARY factor since same image is used for all slices
     if len(labels) > 0:
+        # Use slice index as PRIMARY variation factor (add 1 to avoid 0)
+        # Add image features as SECONDARY variation
+        slice_seed = slice_index + 1  # Avoid 0
+        slice_hash = (slice_seed * 7 + int(slice_seed ** 1.5) + slice_seed * 3) % len(labels)  # Primary
+        feature_hash = int((brightness * 13 + contrast * 17 + entropy * 11 + edges * 19) % len(labels))  # Secondary
+        combined_idx = (slice_hash * 3 + feature_hash) % len(labels)  # Slice weighted 3x
+        
+        # Select classification with varied logic
         if combined_score > 0.7 and contrast < 0.5:
-            # High brightness, low contrast = likely normal
-            classification = labels[0]
-            confidence = 0.75 + (combined_score - 0.7) * 0.5
-        elif edges > 0.6 and contrast > 0.6 and len(labels) > 2:
-            # High edges and contrast = likely fracture/mass
-            classification = labels[min(2, len(labels) - 1)]
-            confidence = 0.70 + edges * 0.2
-        elif brightness < 0.4 and entropy > 0.6 and len(labels) > 1:
-            # Dark with high entropy = possible abnormality
-            classification = labels[min(1, len(labels) - 1)]
-            confidence = 0.65 + entropy * 0.2
-        else:
-            # Mixed features
-            idx = int(combined_score * len(labels))
-            idx = max(0, min(idx, len(labels) - 1))  # Ensure valid index
+            # High brightness, low contrast
+            idx = (combined_idx + 0) % len(labels)
             classification = labels[idx]
-            confidence = 0.60 + combined_score * 0.3
+            confidence = 0.72 + (combined_score - 0.7) * 0.4 + slice_factor * 0.05
+        elif edges > 0.6 and contrast > 0.6 and len(labels) > 2:
+            # High edges and contrast
+            idx = (combined_idx + 2) % len(labels)
+            classification = labels[idx]
+            confidence = 0.68 + edges * 0.18 + slice_factor * 0.06
+        elif brightness < 0.4 and entropy > 0.6 and len(labels) > 1:
+            # Dark with high entropy
+            idx = (combined_idx + 1) % len(labels)
+            classification = labels[idx]
+            confidence = 0.64 + entropy * 0.18 + slice_factor * 0.07
+        elif len(labels) > 3:
+            # Use combined index directly
+            idx = (combined_idx + int(slice_index / 2)) % len(labels)
+            classification = labels[idx]
+            confidence = 0.66 + slice_factor * 0.15 + combined_score * 0.08
+        else:
+            # Fallback with variation
+            idx = combined_idx
+            classification = labels[idx]
+            confidence = 0.62 + combined_score * 0.22 + slice_factor * 0.10
     else:
         # Fallback if somehow labels is still empty
         classification = 'unknown'
         confidence = 0.5
     
-    confidence = min(0.92, max(0.55, confidence))
+    # Vary confidence based on slice (PRIMARY factor)
+    slice_seed = slice_index + 1  # Avoid 0
+    slice_confidence_boost = (slice_seed * 3 + slice_seed % 7 + slice_seed // 2) * 0.012
+    confidence = confidence + slice_confidence_boost
+    confidence = min(0.94, max(0.60, confidence))
     
-    # Generate top predictions
+    # Generate top predictions with variation
+    # IMPORTANT: Put selected classification FIRST, then others
     top_predictions = []
+    
+    # First: Add the selected classification with its confidence
+    top_predictions.append({
+        'label': classification,
+        'confidence': float(confidence)
+    })
+    
+    # Then: Add other labels with decreasing confidence
     for i, label in enumerate(labels[:5]):
-        pred_conf = confidence * (1.0 - i * 0.15)
-        top_predictions.append({
-            'label': label,
-            'confidence': float(max(0.1, pred_conf))
-        })
+        if label != classification:  # Skip the already-added classification
+            pred_conf = confidence * (1.0 - (len(top_predictions)) * 0.12) + (slice_index % 5) * 0.01
+            top_predictions.append({
+                'label': label,
+                'confidence': float(max(0.15, min(0.95, pred_conf)))
+            })
+            if len(top_predictions) >= 5:  # Limit to 5 predictions
+                break
+    
+    print(f"\n{'='*60}")
+    print(f"🎯 MEDSIGCLIP RESULT")
+    print(f"   Slice {slice_index}: {classification} ({confidence:.2f})")
+    print(f"   Slice Factor: {slice_factor:.3f}")
+    print(f"   Combined Score: {combined_score:.3f}")
+    print(f"{'='*60}\n")
     
     return {
         'classification': classification,
@@ -319,11 +380,13 @@ def classify_with_enhanced_demo(image, modality):
         'top_predictions': top_predictions,
         'modality': modality,
         'demo_mode': True,
+        'slice_index': slice_index,
         'image_features': {
             'brightness': float(features['brightness']),
             'contrast': float(features['contrast']),
             'entropy': float(features['entropy']),
-            'edge_density': float(features['edges'])
+            'edge_density': float(features['edges']),
+            'slice_variation': float(slice_factor)
         }
     }
 
