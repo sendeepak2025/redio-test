@@ -497,7 +497,7 @@ const ModernViewerPage: React.FC = () => {
                                 {activePanel === 'ai' && <AIAnalysisPanel studyInstanceUID={studyInstanceUID} frameIndex={0} />}
                                 {activePanel === 'similar' && <SimilarImagesPanel studyInstanceUID={studyInstanceUID} frameIndex={0} />}
                                 {activePanel === 'report' && (
-                                    <SuperUnifiedReportEditor 
+                                    <ProductionReportEditor 
                                         studyInstanceUID={studyInstanceUID || ''} 
                                         patientInfo={{
                                             patientID: studyData?.patientID || '',
