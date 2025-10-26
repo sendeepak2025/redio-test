@@ -127,6 +127,16 @@ function App() {
             element={<AuthDebug />}
           />
 
+          {/* Test Reporting System */}
+          <Route
+            path="/test-reporting"
+            element={
+              <SimpleProtectedRoute>
+                <TestReportingPage />
+              </SimpleProtectedRoute>
+            }
+          />
+
           {/* Protected routes with layout */}
           <Route
             path="/dashboard"
