@@ -79,7 +79,7 @@ const ModernViewerPage: React.FC = () => {
     const panels = [
         { id: 'ai', label: 'AI Analysis', icon: <Psychology />, component: AIAnalysisPanel },
         { id: 'similar', label: 'Similar Cases', icon: <ImageSearch />, component: SimilarImagesPanel },
-        { id: 'report', label: 'Report', icon: <Description />, component: ReportingInterface },
+        { id: 'report', label: 'Report', icon: <Description />, component: SuperUnifiedReportEditor },
     ]
 
     useEffect(() => {
