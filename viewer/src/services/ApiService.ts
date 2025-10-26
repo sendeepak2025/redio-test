@@ -40,8 +40,8 @@ export const apiCall = async (
   console.log(`API Call: ${options.method || 'GET'} ${url}`)
 
   // Get auth token
-   const  token = getAuthToken()
-  
+  const token = getAuthToken()
+
   const response = await fetch(url, {
     ...options,
     credentials: 'include', // Send cookies
@@ -132,7 +132,7 @@ export const uploadZipStudy = async (
   const url = `${BACKEND_URL}/api/dicom/upload/zip`
   const formData = new FormData()
   formData.append('file', file)
-  
+
   if (options?.forceUnifiedStudy) {
     formData.append('forceUnifiedStudy', 'true')
   }
@@ -237,12 +237,12 @@ export const createPatient = async (patient: { patientID: string; patientName?: 
 export const uploadDicomFileForPatient = async (file: File, patientID: string, patientName?: string) => {
   const url = `${BACKEND_URL}/api/dicom/upload`
   const formData = new FormData()
-  
+
   // Append file with explicit filename to preserve extension
   formData.append('file', file, file.name)
   formData.append('patientID', patientID)
   if (patientName) formData.append('patientName', patientName)
-  
+
   const token = getAuthToken()
 
   console.log('📤 Uploading DICOM file:', {
@@ -260,7 +260,7 @@ export const uploadDicomFileForPatient = async (file: File, patientID: string, p
       ...(token && { Authorization: `Bearer ${token}` }),
     },
   })
-  
+
   const result = await response.json()
   console.log('📥 Upload response:', result)
   return result
@@ -273,12 +273,12 @@ export const uploadDicomFileForPatient = async (file: File, patientID: string, p
 export const uploadPacsStudy = async (files: File[]) => {
   const url = `${BACKEND_URL}/api/pacs/upload`
   const formData = new FormData()
-  
+
   // Append all files with 'dicom' field name (required by backend)
   files.forEach((file) => {
     formData.append('dicom', file)
   })
-  
+
   const token = getAuthToken()
 
   console.log('📤 Uploading PACS study:', {
@@ -296,7 +296,7 @@ export const uploadPacsStudy = async (files: File[]) => {
       ...(token && { Authorization: `Bearer ${token}` }),
     },
   })
-  
+
   if (!response.ok) {
     const errorText = await response.text()
     console.error('❌ PACS upload failed:', errorText)
@@ -307,7 +307,7 @@ export const uploadPacsStudy = async (files: File[]) => {
       throw new Error(`Upload failed: ${response.status} ${response.statusText}`)
     }
   }
-  
+
   const result = await response.json()
   console.log('📥 PACS upload response:', result)
   return result

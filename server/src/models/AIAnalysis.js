@@ -73,6 +73,21 @@ const aiAnalysisSchema = new mongoose.Schema({
   options: {
     type: mongoose.Schema.Types.Mixed,
     default: {}
+  },
+  
+  // Linked Report (for radiologist review workflow)
+  linkedReportId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'StructuredReport',
+    default: null
+  },
+  
+  // Workflow Status
+  workflowStatus: {
+    type: String,
+    enum: ['draft', 'reviewed', 'final'],
+    default: 'draft',
+    index: true
   }
 }, {
   timestamps: true

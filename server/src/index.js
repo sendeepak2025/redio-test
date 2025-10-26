@@ -18,10 +18,50 @@ const AdminActionLogger = require('./services/admin-action-logger');
 const followUpAutomation = require('./services/followup-automation');
 
 const app = express();
-app.use(cors());
+
+// CORS configuration - Allow credentials and specific origins
+app.use(cors({
+  origin: function(origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    // List of allowed origins
+    const allowedOrigins = [
+      'http://localhost:3010',
+      'http://localhost:5173',
+      'http://localhost:3000',
+      'http://127.0.0.1:3010',
+      'http://127.0.0.1:5173',
+      'http://127.0.0.1:3000'
+    ];
+    
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      console.warn(`⚠️  CORS: Origin ${origin} not allowed`);
+      callback(null, true); // Allow anyway for development
+    }
+  },
+  credentials: true, // Allow cookies and authorization headers
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: [
+    'Content-Type', 
+    'Authorization', 
+    'X-Requested-With',
+    'x-correlation-id',  // Add correlation ID header
+    'X-Correlation-Id'   // Case variation
+  ],
+  exposedHeaders: ['Content-Range', 'X-Content-Range']
+}));
+
 app.use(express.json({ limit: '20mb' }));
 app.use(morgan('dev'));
 app.use(cookieParser());
+
+// Serve uploaded files (signatures, etc.)
+const uploadsPath = require('path').join(__dirname, '../uploads');
+app.use('/uploads', express.static(uploadsPath));
+console.log('📁 Serving uploads from:', uploadsPath);
 
 // Audit middleware - must be early in the middleware chain
 app.use(auditMiddleware({

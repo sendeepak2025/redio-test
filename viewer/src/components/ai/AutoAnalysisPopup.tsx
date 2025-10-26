@@ -30,6 +30,7 @@ import {
   Description
 } from '@mui/icons-material';
 import { autoAnalysisService, SliceAnalysis } from '../../services/AutoAnalysisService';
+import { UnifiedReportEditor } from '../reports';
 
 interface AutoAnalysisPopupProps {
   open: boolean;
@@ -57,6 +58,10 @@ export const AutoAnalysisPopup: React.FC<AutoAnalysisPopupProps> = ({
     message: string;
   } | null>(null);
   const [isCheckingHealth, setIsCheckingHealth] = useState(true);
+  
+  // Report Editor state
+  const [showReportEditor, setShowReportEditor] = useState(false);
+  const [currentAnalysisId, setCurrentAnalysisId] = useState<string | null>(null);
 
   // Check backend health before starting analysis
   useEffect(() => {
@@ -169,6 +174,7 @@ export const AutoAnalysisPopup: React.FC<AutoAnalysisPopupProps> = ({
   const allComplete = autoAnalysisService.areAllComplete();
 
   return (
+    <>
     <Dialog
       open={open}
       onClose={onClose}
@@ -356,6 +362,30 @@ export const AutoAnalysisPopup: React.FC<AutoAnalysisPopupProps> = ({
         <Button onClick={onClose} disabled={!allComplete}>
           {allComplete ? 'Close' : 'Cancel'}
         </Button>
+        
+        {/* Create Medical Report Button - Shows when analysis is complete */}
+        {allComplete && (
+          <Button
+            variant="contained"
+            color="success"
+            startIcon={<Description />}
+            onClick={() => {
+              // Get the first analysis ID for report creation
+              const firstAnalysis = Array.from(analyses.values())[0];
+              if (firstAnalysis?.analysisId) {
+                setCurrentAnalysisId(firstAnalysis.analysisId);
+                setShowReportEditor(true);
+                console.log('📝 Opening Report Editor with Analysis ID:', firstAnalysis.analysisId);
+              } else {
+                alert('⚠️ Analysis ID not found. Please try again.');
+              }
+            }}
+            sx={{ mr: 1 }}
+          >
+            📝 Create Medical Report
+          </Button>
+        )}
+        
         {mode === 'all' && allComplete && (
           <Button
             variant="contained"
@@ -368,5 +398,57 @@ export const AutoAnalysisPopup: React.FC<AutoAnalysisPopupProps> = ({
         )}
       </DialogActions>
     </Dialog>
+    
+    {/* Report Editor Dialog */}
+    {showReportEditor && (
+    <Dialog
+      open={showReportEditor}
+      onClose={() => setShowReportEditor(false)}
+      maxWidth="md"
+      fullWidth
+      PaperProps={{
+        sx: {
+          minHeight: '600px',
+          maxHeight: '90vh'
+        }
+      }}
+    >
+      <DialogTitle>
+        <Box display="flex" alignItems="center" gap={1}>
+          <Description color="primary" />
+          <Typography variant="h6">Create Medical Report</Typography>
+        </Box>
+      </DialogTitle>
+      <DialogContent>
+        <Alert severity="success" sx={{ mb: 2 }}>
+          ✅ AI Analysis Complete! Creating report from analysis findings.
+        </Alert>
+        
+        <UnifiedReportEditor
+          analysisId={currentAnalysisId || undefined}
+          studyInstanceUID={studyInstanceUID}
+          patientInfo={{
+            patientID: 'P' + Date.now().toString().slice(-6),
+            patientName: 'Patient Name',
+            modality: 'CT'
+          }}
+          onReportCreated={(reportId) => {
+            console.log('✅ Report created:', reportId);
+          }}
+          onReportSigned={() => {
+            console.log('✅ Report signed and finalized!');
+            alert('✅ Report signed and finalized!\n\nYou can now view it in Report History.');
+            setShowReportEditor(false);
+          }}
+        />
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={() => setShowReportEditor(false)}>
+          Close
+        </Button>
+      </DialogActions>
+    </Dialog>
+    )}
+  </>
   );
 };

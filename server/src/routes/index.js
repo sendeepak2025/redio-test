@@ -171,7 +171,7 @@ router.get('/api/viewer/stats', authenticate, unifiedViewController.getStats);
 // Viewer Selection Sync API - Selection synchronization for measurements and annotations
 router.use('/api/viewer', viewerSelectionRoutes);
 
-// Structured Reporting API - Medical findings, measurements, and reports
+// Medical Reporting API - AI-assisted report generation and management
 router.use('/api/reports', structuredReportsRoutes);
 
 // Signature Upload API - Upload signatures to filesystem

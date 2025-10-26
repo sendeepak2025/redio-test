@@ -199,7 +199,7 @@ async function saveStudyToDatabase(orthancStudyId) {
 
         // Calculate total instances from all series
         const totalInstances = seriesData.reduce((sum, series) => sum + (series.numberOfInstances || 0), 0);
-        
+
         console.log(`📊 Total instances across all series: ${totalInstances}`);
 
         // Save study
