@@ -24,6 +24,7 @@ import SettingsPage from './pages/settings/SettingsPage'
 import ProfilePage from './pages/profile/ProfilePage'
 import BillingPage from './pages/billing/BillingPage'
 import FollowUpPage from './pages/followup/FollowUpPage'
+import TestReportingPage from './pages/TestReportingPage'
 
 // Simple pages without complex dependencies
 const LoginPage = React.lazy(() => import('./pages/auth/LoginPage'))
