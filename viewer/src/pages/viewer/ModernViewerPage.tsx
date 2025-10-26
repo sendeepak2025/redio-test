@@ -496,7 +496,17 @@ const ModernViewerPage: React.FC = () => {
                             <Box sx={{ flex: 1, overflow: 'auto', p: 2 }}>
                                 {activePanel === 'ai' && <AIAnalysisPanel studyInstanceUID={studyInstanceUID} frameIndex={0} />}
                                 {activePanel === 'similar' && <SimilarImagesPanel studyInstanceUID={studyInstanceUID} frameIndex={0} />}
-                                {activePanel === 'report' && <ReportingInterface studyInstanceUID={studyInstanceUID} patientId={studyData?.patientID || ''} />}
+                                {activePanel === 'report' && (
+                                    <SuperUnifiedReportEditor 
+                                        studyInstanceUID={studyInstanceUID || ''} 
+                                        patientInfo={{
+                                            patientID: studyData?.patientID || '',
+                                            patientName: studyData?.patientName || '',
+                                            modality: studyData?.modality || ''
+                                        }}
+                                        onClose={() => setActivePanel(null)}
+                                    />
+                                )}
                             </Box>
                         </Paper>
                     </Slide>
